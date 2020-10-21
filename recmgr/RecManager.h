@@ -1,0 +1,108 @@
+#ifndef REC_MANAGER
+#define REC_MANAGER
+#define DATA_OFFSET 1024
+#define ID_SEGM 16
+#define DATA_SIZE (PAGE_SIZE-DATA_OFFSET)
+
+#include "../filesystem/bufmanager/BufPageManager.h"
+#include "../filesystem/fileio/FileManager.h"
+#include "../filesystem/utils/pagedef.h"
+#include <iostream>
+#include <cstring>
+#include <bitset> 
+using namespace std;
+
+class RecManager {
+private:
+	// stored in memory:
+	BufPageManager * bpm;
+	int fileID; // associated to a single file
+	int idxPage; // buffer index for page 0
+	
+	// stored in file - page 0:
+	int * recSize; // sizeof(rec)
+	int * recPP; // #recs per page
+	int * recNum; // #recs
+	int * pageNum; // #pages, including page 0
+	bitset<DATA_SIZE*8> * bmPage; // bitmap for free pages, including page 0
+	
+	
+public:
+	RecManager(BufPageManager * bpm, int fileID, int recSize) {
+		this->bpm = bpm;
+		this->fileID = fileID;
+		BufType b = bpm->allocPage(fileID, 0, idxPage, false);
+
+		this->recSize = (int *)&b[0];
+		this->recPP = (int *)&b[1];
+		this->recNum = (int *)&b[2];
+		this->pageNum = (int *)&b[3];
+		this->bmPage = (bitset<DATA_SIZE*8> *)((unsigned char*)b + DATA_OFFSET);
+		*this->recSize = recSize;
+		*this->recPP = DATA_SIZE/recSize;
+		*this->recNum = 0;
+		*this->pageNum = 1;
+		this->bmPage->reset();
+		this->bmPage[0] = true;
+
+		bpm->markDirty(idxPage);
+	}
+	~RecManager() {
+		this->bpm->close();
+	}
+	void insertRec(BufType e, unsigned int & id) {
+		*recNum += 1;
+		int curPage;
+		for (curPage = 0; ; curPage++) {
+			if (! (*bmPage)[curPage])
+				break;
+		}
+		int idxRec;
+		BufType b;
+		bitset<DATA_OFFSET*8> * bmRec;
+		if (curPage == *pageNum) {
+			// create new page
+			*pageNum += 1;
+			b = bpm->allocPage(fileID, curPage, idxRec, false);
+			bmRec = (bitset<DATA_OFFSET*8> *)b;
+			bmRec->reset();
+		} else {
+			b = bpm->getPage(fileID, curPage, idxRec);
+			bmRec = (bitset<DATA_OFFSET*8> *)b;
+		}
+		int curRec;
+		for (curRec = 0; ; curRec++) {
+			if (! (*bmRec)[curRec])
+				break;
+		}
+		memcpy((unsigned char *)b + DATA_OFFSET + *recSize * curRec, e, *recSize);
+		(*bmRec)[curRec] = true;
+		if (bmRec->count() == *recPP) {
+			(*bmPage)[curPage] = true;
+		}
+		bpm->markDirty(idxPage);
+		bpm->markDirty(idxRec);
+		id = (curPage << ID_SEGM) + curRec;
+	}
+	void deleteRec(unsigned int id) {
+		*recNum -= 1;
+		int curPage = id >> ID_SEGM;
+		int curRec = id << ID_SEGM >> ID_SEGM;
+		int idxRec;
+		BufType b = bpm->getPage(fileID, curPage, idxRec);
+		bitset<DATA_OFFSET*8> * bmRec = (bitset<DATA_OFFSET*8> *)b;
+		(*bmRec)[curRec] = false;
+		(*bmPage)[curPage] = false;
+		bpm->markDirty(idxPage);
+		bpm->markDirty(idxRec);
+	}
+	void updateRec(BufType e, unsigned int id) {
+		int curPage = id >> ID_SEGM;
+		int curRec = id << ID_SEGM >> ID_SEGM;
+		int idxRec;
+		BufType b = bpm->getPage(fileID, curPage, idxRec);
+		memcpy((unsigned char *)b + DATA_OFFSET + *recSize * curRec, e, *recSize);
+		bpm->markDirty(idxRec);
+	}
+};
+#endif
