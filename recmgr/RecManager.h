@@ -43,7 +43,7 @@ public:
 		*this->recNum = 0;
 		*this->pageNum = 1;
 		this->bmPage->reset();
-		this->bmPage[0] = true;
+		(*this->bmPage)[0] = true;
 
 		bpm->markDirty(idxPage);
 	}
@@ -102,7 +102,70 @@ public:
 		int idxRec;
 		BufType b = bpm->getPage(fileID, curPage, idxRec);
 		memcpy((unsigned char *)b + DATA_OFFSET + *recSize * curRec, e, *recSize);
+		bpm->access(idxPage);
 		bpm->markDirty(idxRec);
 	}
+	void debug() {
+		cout << "recsize:" << *recSize << "\trecPP:" << *recPP << 
+			"\trecNum:" << *recNum << "\tpageNum:" << *pageNum << "\n";
+		cout << "bmPage:" << (*bmPage)[0] << (*bmPage)[1] << (*bmPage)[2] << (*bmPage)[3] <<
+			(*bmPage)[4] << (*bmPage)[5] << (*bmPage)[6] << (*bmPage)[7] << "\n";
+	}
+	class Iterator {
+	private:
+		RecManager * rm;
+		int curPage;
+		int curRec;
+	public:
+		Iterator(RecManager * rm) {
+			this->rm = rm;
+			this->curPage = 1;
+			this->curRec = -1;
+		}
+		bool next(BufType & e, unsigned & id) {
+			int idxRec;
+			BufType b = rm->bpm->getPage(rm->fileID, curPage, idxRec);
+			bitset<DATA_OFFSET*8> * bmRec = (bitset<DATA_OFFSET*8> *)b;
+			bool found = false;
+			for (curRec = curRec + 1; curRec < *rm->recPP; curRec++) {
+				if ((*bmRec)[curRec]) {
+					found = true;
+					break;
+				}
+			}
+			rm->bpm->access(idxRec);
+			
+
+			if (!found) {
+				for (curPage = curPage+1; curPage < *rm->pageNum; curPage++) {
+					b = rm->bpm->getPage(rm->fileID, curPage, idxRec);
+					rm->bpm->access(idxRec);
+					bmRec = (bitset<DATA_OFFSET*8> *)b;
+					rm->bpm->access(idxRec);
+					if (bmRec->count() > 0) {
+						found = true;
+						break;
+					}
+				}
+				if (!found) {
+					rm->bpm->access(rm->idxPage);
+					return false;
+				}
+				b = rm->bpm->getPage(rm->fileID, curPage, idxRec);
+				bmRec = (bitset<DATA_OFFSET*8> *)b;
+				for (curRec = 0; ; curRec++) {
+					if ((*bmRec)[curRec])
+						break;
+				}
+
+			}
+			rm->bpm->access(rm->idxPage);
+			rm->bpm->access(idxRec);
+			e = (BufType)((unsigned char *)b + DATA_OFFSET + *rm->recSize * curRec);
+			id = (curPage << ID_SEGM) + curRec;
+			return true;
+		}
+
+	};
 };
 #endif

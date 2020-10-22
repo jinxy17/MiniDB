@@ -42,12 +42,29 @@ int main() {
 		rm->insertRec((BufType)new int[2000], id);
 		cout << "page:" << (id >> 16) << "\t\trec:" << (id << 16 >> 16) << "\n";
 	}
+	rm->debug();
+	cout << "\n\n";
+
+	rm->deleteRec((1 << 16) + 0); 
+	rm->deleteRec((1 << 16) + 1); 
 	rm->deleteRec((2 << 16) + 1); 
 	rm->deleteRec((3 << 16) + 0); 
 	rm->deleteRec((3 << 16) + 1); 
 	rm->deleteRec((3 << 16) + 2); 
-	for (int i = 0; i < 5; i++) {
-		rm->insertRec((BufType)new int[2000], id);
+	rm->debug();
+	cout << "\n\n";
+
+	// for (int i = 0; i < 10; i++) {
+	// 	rm->insertRec((BufType)new int[2000], id);
+	// 	cout << "page:" << (id >> 16) << "\t\trec:" << (id << 16 >> 16) << "\n";
+	// }
+	// rm->debug();
+	// cout << "\n\n";
+
+
+	RecManager::Iterator * iter = new RecManager::Iterator(rm);
+	BufType e;
+	while (iter->next(e, id)) {
 		cout << "page:" << (id >> 16) << "\t\trec:" << (id << 16 >> 16) << "\n";
 	}
 
