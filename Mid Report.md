@@ -117,7 +117,9 @@ public:
 
 ```
 
-### 说明
+### 说明:
+&emsp;&emsp;索引信息页的OFFSET是16字节,数据页的OFFSET是20字节,考虑到后续可能的扩展,整个索引系统的页内OFFSET暂定为32字节  
+
 索引文件的文件头(第一页)分区如下:  
 
 | ixType  | ixSize  | ixPP    | rootIdx  | offset   | bmPage     |  
@@ -127,9 +129,12 @@ public:
 
 索引数据页面分区如下:  
 | isLeaf  | keyNum  | parent  | prev    | next    | offset   | childs | pages | offsets | keys |  
-| 4 Bytes | 4 Bytes | 4 Bytes | 4 Bytes | 4 Bytes | 12 Bytes | 8160 Bytes                      |
+| 4 Bytes | 4 Bytes | 4 Bytes | 4 Bytes | 4 Bytes | 12 Bytes | 8160 Bytes                      |  
 
-### 存在的问题
+&emsp;&emsp;其中`isLeaf`记录节点是否为叶子节点,`keyNum`记录节点中键值数,`parent,prev,next`分别为父节点和邻居节点,经过`offset`之后是储存四类数据的数据区
+
+### 存在的问题:
 1. 未进行详细测试。
 2. 多列索引尚未实现
+
 
