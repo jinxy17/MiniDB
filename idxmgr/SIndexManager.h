@@ -1,86 +1,15 @@
-# MiniDB
-Project for Database course @ THUCS
+#ifndef SINDEX_MANAGER
+#define SINDEX_MANAGER
 
-## Authors
-Xuyang JIN, Xiaoyu LI
-
-## Checkpoint 1: Record Management
-
-### Author
-Xuyang JIN
-
-### Files
-`recmgr/RecManager.h`
-
-`Debug/testrecmanager.cpp`
-
-### Class doc
-```cpp
-#define DATA_OFFSET 1024 // offset of DATA section for each page, in bytes
-#define ID_SEGM 16 // pos of seperator for rec id, in bits
-#define DATA_SIZE (PAGE_SIZE-DATA_OFFSET)
-
-class RecManager {
-	RecManager(BufPageManager * bpm, int fileID, int recSize); 
-	// bpm: pointer to BufPageManager
-	// fileID: current file id
-	// recSize: size for each rec, in bytes
-	
-	~RecManager();
-	
-	void insertRec(BufType e, unsigned int & id);
-	// e: pointer to a rec
-	// id: returns id
-	
-	void deleteRec(unsigned int id);
-	// id: id of rec to be deleted 
-	
-	void updateRec(BufType e, unsigned int id);
-	// e: pointer to a rec
-	// id: id of rec to be updated
-		
-	class Iterator { // nested iterator class
-		Iterator(RecManager * rm); 
-		// rm: pointer to RecManager
-		
-		bool next(BufType & e, unsigned & id);
-		// e: returns pointer to next rec
-		// id: returns id of next rec
-		// return: false if reaches end, else true
-	};
-};
-```
-
-## Checkpoint 2: Index Management
-
-### Author
-Xiaoyu LI
-
-### Files
-`idxmgr/*.h`  
-`idxmgr/*.cc`
-
-### Class doc
-```cpp
-
-// 索引数据页面分块:
-// | isLeaf  | keyNum  | parent  | prev    | next    | offset   | childs | pages | offsets | keys |
-// | 4 Bytes | 4 Bytes | 4 Bytes | 4 Bytes | 4 Bytes | 12 Bytes | 8160 Bytes                      |
-
-//B+Tree节点数据结构
-struct BPlusNode{
-    int pageID;// 此块对应的缓存页号
-
-    // 以下是保存到物理页的数据的访问指针
-    int* isLeaf; //是否为叶子节点
-	int* keyNum; //键值数
-	int* parent; //父节点
-	int* prev, next;//邻居节点
-
-    //指向四大数据区起始处的指针
-	unsigned char *key;
-    BufType child, page, offset;
-};
+#include "../filesystem/bufmanager/BufPageManager.h"
+#include "../filesystem/fileio/FileManager.h"
+#include "../filesystem/utils/pagedef.h"
+#include "BPlusTree.h"
+#include <iostream>
+#include <cstring>
+#include <bitset>
+#include <map>
+using namespace std;
 
 //索引信息页的OFFSET是16字节,数据页的OFFSET是20字节,暂时留出32字节
 #define DATA_OFFSET_IX 32
@@ -89,7 +18,7 @@ struct BPlusNode{
 #define FLOAT 1
 #define STRING 2
 
-// 索引信息页面分块:
+// 索引信息页面分区:
 // | ixType  | ixSize  | ixPP    | rootIdx  | offset   | bmPage     |
 // | 4 Bytes | 4 Bytes | 4 Bytes | 4 Bytes  | 16 Bytes | 8160 Bytes |
 
@@ -123,6 +52,7 @@ public:
 
     //获取输出为key的所有项
     map<int, int> getAllIx(void *key);
+
     //获取键值为key,位置大于page-offset的第一个项
     bool getIx(void *key,int page,int offset, int& rpage, int& roffset);
 
@@ -140,20 +70,5 @@ public:
     bool compareKey(void *key1, void *key2)
 };
 
-//索引管理模块
-class IndexManager {
-private:
-	FileManager *fm;
-	BufPageManager *bpm;
 
-public:
-	IndexManager(FileManager *fm, BufPageManager *bpm);
-	~IndexManager();
-
-    //创建,删除,打开,关闭索引
-	bool CreateIndex(const char *ixName, int ixType, int ixSize);
-	bool DeleteIndex(const char *ixName);
-	bool OpenIndex(const char *ixName, SIndexManager* sim);
-    bool CloseIndex(SIndexManager* sim);
-};
-```
+#endif
