@@ -16,7 +16,7 @@ bool IndexManager::CreateIndex(const char *ixName, int ixType, int ixSize){
 	if (!this->fm->openFile(ixName, fileID))
         return false;
     SIndexManager* sim = new SIndexManager(this->bpm,fileID);
-    sim->init();
+    sim->init(int ixSize,int ixType);
     delete sim;
     return true;
 }

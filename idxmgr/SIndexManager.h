@@ -48,7 +48,7 @@ public:
 
     //插入,删除,查询索引
     void insertIx(void *key, int page, int offset);
-    void deleteIx(void *key, int page, int offset);
+    bool deleteIx(void *key, int page, int offset);
 
     //获取输出为key的所有项
     map<int, int> getAllIx(void *key);
@@ -62,7 +62,7 @@ public:
     bool setEmptyPage(int id);
 
     /* 从第id个块中读取B+Tree节点数据 */
-    BPlusNode* readNode(BPlusNode* node, int id);
+    void readNode(BPlusNode* node, int id);
 
     //比较两个key值的大小,若大小相同则进一步比较其存储位置,返回key1<key2
     bool compare(void* key1, void* key2, int page1, int page2,int offset1, int offset2)
