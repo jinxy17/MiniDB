@@ -12,7 +12,7 @@ Xuyang JIN
 ### Files
 `recmgr/RecManager.h`
 
-`Debug/testrecmanager.cpp`
+`Debug/testrecmgmr.cpp`
 
 ### Class doc
 ```cpp
