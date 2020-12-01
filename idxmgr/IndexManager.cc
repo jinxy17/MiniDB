@@ -9,33 +9,39 @@ IndexManager::~IndexManager() {}
 
 bool IndexManager::CreateIndex(const char *ixName, int ixType, int ixSize){
     // 调用fileManager创建一个名为ixName的文件
-	if (!this->fm->createFile(ixName)) 
+	if (!this->fm->createFile(ixName)) {
+        // 文件系统的create实质是打开或创建文件(fopen)
         return false;
+    }
 	int fileID;
 	// 调用fileManager打开indexname文件,并获得文件句柄fileID
 	if (!this->fm->openFile(ixName, fileID))
         return false;
-    SIndexManager* sim = new SIndexManager(this->bpm,fileID);
-    sim->init(int ixSize,int ixType);
+    SIndexManager*   sim = new SIndexManager(this->bpm,fileID);
+    sim->init(ixSize,ixType);
     delete sim;
     return true;
 }
 
 bool IndexManager::DeleteIndex(const char *ixName){
 	bpm->close();
-	system(("rm " + ixName);
+    const char* rm = "rm ";
+    char* rmidx = (char *) malloc(strlen(rm) + strlen(ixName));
+    strcpy(rmidx, rm);
+    strcat(rmidx, ixName);
+	system(rmidx);
 	return true;
 }
 	
-bool IndexManager::OpenIndex(const char *ixName, SIndexManager* sim){
-    int fileID;
+bool IndexManager::OpenIndex(const char *ixName, int& fileID){
     if (!this->fm->openFile(ixName, fileID)) 
         return false;
-    sim = new SIndexManager(this->bpm,fileID);
     return true;
 }
 
 bool IndexManager::CloseIndex(SIndexManager* sim){
-    if (fileManager->closeFile(sim->fileID)) return false;
+    if (!fm->closeFile(sim->fileID))
+        return false;
+    delete sim;
     return true;
 }
