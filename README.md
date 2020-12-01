@@ -133,7 +133,7 @@ public:
 1. 未进行详细测试。
 2. 多列索引尚未实现
 
-## Checkpoint 2: Index Management
+## Checkpoint 3: System Management
 
 ### Author
 Xuyang JIN

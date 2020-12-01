@@ -23,7 +23,7 @@ void SIndexManager::readInfo(){
     memcpy(this->bmPage,(unsigned char *)b + DATA_OFFSET_IX,sizeof(bitset<DATA_SIZE_IX * 8>));
 
     //DEBUG
-    printf("ReadInfo--Index: \n  ixType:%d\n  ixSize:%d\n  ixPP:%d\n  rootIdx:%d\n",ixType,ixSize,ixPP,rootIdx);
+    // printf("ReadInfo--Index: \n  ixType:%d\n  ixSize:%d\n  ixPP:%d\n  rootIdx:%d\n",ixType,ixSize,ixPP,rootIdx);
 
     bpm->access(this->infoPage);
 }
@@ -56,7 +56,7 @@ bool SIndexManager::init(int ixSize, int ixType)
     (*this->bmPage)[1] = true;
 
     //DEBUG
-    printf("Index: \n  ixType:%d\n  ixSize:%d\n  ixPP:%d\n  rootIdx:%d\n",ixType,ixSize,ixPP,rootIdx);
+    // printf("Index: \n  ixType:%d\n  ixSize:%d\n  ixPP:%d\n  rootIdx:%d\n",ixType,ixSize,ixPP,rootIdx);
 
     writeInfo();
 
@@ -515,7 +515,7 @@ bool SIndexManager::compareKey(void *key1, void *key2)
 }
 
 bool SIndexManager::OpenScan(void *key, bool lower) {
-	int page = lower ? -1 : 1 << 31;
+	int page = lower ? -1 : 1 << 30;
 	int offset = page;
 
     //获取根节点的页号
@@ -577,7 +577,7 @@ bool SIndexManager::GetPrevEntry(int &page, int &offset) {
 	if (scan_entryID == 0) {
 		if (*node->prev == 0) {
 			delete node;
-			return true;
+			return false;
 		}
 		scan_nodeID = *node->prev;
 		this->readNode(node, scan_nodeID);
