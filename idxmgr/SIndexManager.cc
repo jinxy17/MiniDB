@@ -306,8 +306,6 @@ bool SIndexManager::insertIx(void *key, int page, int offset)
         delete node;
         id = *node->parent;
         node = parentNode;
-        // printf("fid:%d\n",id);
-        // if(id == 102)   Print_Tree();
     }
 }
 
@@ -474,15 +472,15 @@ bool SIndexManager::compare(void *key1, void *key2, int page1, int page2, int of
     }
 
     //再比较存储的位置
-    return ((page1 << 13) + offset1) < ((page2 << 13) + offset2);
-    // if (page1 < page2)
-    //     return true;
-    // else if (page1 > page2)
-    //     return false;
-    // else if (offset1 < offset2)
-    //     return true;
-    // else
-    //     return false;
+    // return ((page1 << 13) + offset1) < ((page2 << 13) + offset2);
+    if (page1 < page2)
+        return true;
+    else if (page1 > page2)
+        return false;
+    else if (offset1 < offset2)
+        return true;
+    else
+        return false;
 }
 
 //只进行键值比较,返回key1<key2
@@ -529,7 +527,7 @@ bool SIndexManager::OpenScan(void *key, bool lower) {
         //非叶子节点,继续向下深入
         //由右边向左遍历,寻找插入位置
         int i = (*node->keyNum) - 1;
-        while (i > 0 && !compare(node->key + i * (this->ixSize), key, node->pages[i], page, node->offsets[i], offset))
+        while (i > 0 && compare(key, node->key + i * (this->ixSize), page, node->pages[i], offset, node->offsets[i]))
             i--;
         id = node->childs[i];
         this->readNode(node, id);
@@ -556,12 +554,9 @@ bool SIndexManager::GetNextEntry(int &page, int &offset) {
     this->readNode(node, scan_nodeID);
 	bpm->access(node->pageID);
 	page = node->pages[scan_entryID]; offset = node->offsets[scan_entryID];
-	//void *key = node->key + scan_entryID * _header.attrLen;
-	//cout << *(int*)key << " " << page << " " << slotID << endl;//" " << (char*)((int*)key + 1) << endl;
 	if (scan_entryID == *node->keyNum - 1) {
-		//cout << "new leaf" << endl;
+        // printf("Enter next node\n");
 		if (*node->next == 0) {
-			//fprintf(stderr, "node %d next leaf %d keynum %d\n", scan_nodeID, node->header.nextLeaf, node->header.keyNum);
 			delete node;
 			return false;
 		}

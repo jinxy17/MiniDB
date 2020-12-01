@@ -16,7 +16,7 @@ void test_insert()
 	im->CreateIndex("name", FLOAT, 8);
 	im->OpenIndex("name", fileID);
 	SIndexManager *sim = new SIndexManager(bpm, fileID);
-	sim->Print_Tree();
+	// sim->Print_Tree();
 	//随机插入testsize条数据
 	for (int i = 1; i <= testsize; i++)
 	{
@@ -25,7 +25,7 @@ void test_insert()
 		s.insert(make_pair(x, make_pair(i, i)));
 	}
 	printf("\n After insert:\n");
-	sim->Print_Tree();
+	// sim->Print_Tree();
 	bpm->close();
 	im->CloseIndex(sim);
 	fprintf(stderr, "close\n");
@@ -89,27 +89,35 @@ void test_scan()
 	SIndexManager *sim = new SIndexManager(bpm, fileID);
 	sim->Print_Tree();
 
+	int cnt = 0;
 	for (int i = 0; i < 100; i++)
 	{
 		double x = (rand() % 2000) / 1000.0;
-		printf("x: %.3lf ", x);
+		// printf("x: %.3lf ", x);
 		set<pair<double, pair<int, int> > >::iterator it = s.lower_bound(make_pair(x, make_pair(-1, -1)));
 		
 		sim->OpenScan(&x, true);
-		//fprintf(stderr, "set %.3lf\n", (*it).first);
+		// fprintf(stderr, "set %.8lf\n", (*it).first);
 		while (it != s.end())
 		{
 			int page = -1, slot = -1;
 			sim->GetNextEntry(page, slot);
-			// printf("%d %.3lf\n", (*it).second.first, (*it).first);
+			//printf("%d\n", (*it).second.first);
 			if ((*it).second.first != page)
 			{
-				printf("Error,expect:%d,but receive:%d\n",(*it).second.first ,page);
+				printf("Error,expect:%d,but receive:%d;scanid:%d,%d\n",(*it).second.first ,page,sim->scan_nodeID, sim->scan_entryID);
+				// BPlusNode *node = new BPlusNode();
+				// sim->readNode(node,sim->scan_nodeID);
+				// for(int i = 0;i < *node->keyNum;i++){
+            	// 	printf("pos:%d, data: ",i);
+            	// 	node->print_key(i,sim->ixType,sim->ixSize);
+            	// 	printf(",page:%d,slot:%d;\n",node->pages[i],node->offsets[i]);
+        		// }
 				return;
 			}
 			it++;
 		}
-		printf("test succeed;\n");
+		printf("test %d succeed;\n",++cnt);
 		sim->CloseScan();
 	}
 	bpm->close();
@@ -120,9 +128,9 @@ void test_scan()
 int main()
 {
 	MyBitMap::initConst(); //新加的初始化
-	// test_insert();
-	// test_delete();
-	// test_filesave();
+	test_insert();
 	test_scan();
+	test_delete();
+	//test_filesave();
 	return 0;
 }

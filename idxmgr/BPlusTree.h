@@ -41,7 +41,7 @@ public:
         else if (ixType == FLOAT)
         {
             double* key1 = (double *)(this->key + id * (ixSize));
-            printf("%.4lf",*((double *)key1));
+            printf("%.8lf",*((double *)key1));
         }
     }
 };
