@@ -1,7 +1,10 @@
 #ifndef INDEX_MANAGER
 #define INDEX_MANAGER
 
-#include "SIndexManager.h"
+#include "../filesystem/bufmanager/BufPageManager.h"
+#include "../filesystem/fileio/FileManager.h"
+#include "./SIndexManager.h"
+#include <stdlib.h>
 
 //索引管理模块
 class IndexManager {
@@ -16,7 +19,8 @@ public:
 	bool CreateIndex(const char *ixName, int ixType, int ixSize);
 	bool DeleteIndex(const char *ixName);
 	
-	bool OpenIndex(const char *ixName, SIndexManager* sim);
+	bool OpenIndex(const char *ixName, int& fileID);
     bool CloseIndex(SIndexManager* sim);
 };
+
 #endif
