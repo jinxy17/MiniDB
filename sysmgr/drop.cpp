@@ -8,7 +8,7 @@ int main(int argc, char **argv) {
 		cerr << "Usage: " << argv[0] << " DBName\n";
 		return 1;
 	}
-	char command[100] = "rmdir /S /Q ";
+	char command[100] = "rm -r ";
 	system(strcat(command, argv[1]));
 	return 0;
 }

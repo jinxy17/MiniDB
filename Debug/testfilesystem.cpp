@@ -30,11 +30,16 @@ int main() {
 	MyBitMap::initConst();   //新加的初始化
 	FileManager* fm = new FileManager();
 	BufPageManager* bpm = new BufPageManager(fm);
-	fm->createFile("testfile.txt"); //新建文件
-	fm->createFile("testfile2.txt");
-	int fileID, f2;
-	fm->openFile("testfile.txt", fileID); //打开文件，fileID是返回的文件id
-        fm->openFile("testfile2.txt", f2);
+	int fileID, f2, f3;
+	fm->createFile("tab1"); //新建文件
+	fm->openFile("tab1", fileID); //打开文件，fileID是返回的文件id
+
+	fm->createFile("tab1.primary");
+    fm->openFile("tab1.primary", f2);
+	
+	fm->createFile("tab2");
+    fm->openFile("tab2", f3);
+	cout << fileID << " " << f2 << " " << f3 << endl;
 	for (int pageID = 0; pageID < 1000; ++ pageID) {
 		int index;
 		//为pageID获取一个缓存页
@@ -57,12 +62,15 @@ int main() {
 		BufType b = bpm->getPage(fileID, pageID, index);
 		//注意，在allocPage或者getPage后，千万不要进行delete[] b这样的操作
 		//内存的分配和管理都在BufPageManager中做好，不需要关心，如果自行释放会导致问题
-		cout << b[0] << ":" << b[1] << endl; 		//读取缓存页中第一个整数
+		// cout << b[0] << ":" << b[1] << endl; 		//读取缓存页中第一个整数
 		bpm->access(index); //标记访问
 		b = bpm->getPage(f2, pageID, index);
-		cout << b[0] << ":" << b[1] << endl;
+		// cout << b[0] << ":" << b[1] << endl;
 		bpm->access(index);
 	}
+	fm->closeFile(fileID);
+	fm->closeFile(f2);
+	fm->closeFile(f3);
 	//程序结束前可以调用BufPageManager的某个函数将缓存中的内容写回
 	//具体的函数大家可以看看ppt或者程序的注释
 	return 0;

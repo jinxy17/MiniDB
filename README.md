@@ -72,25 +72,25 @@ class SIndexManager{
     //插入,删除索引
     void insertIx(void *key, int page, int offset);
     bool deleteIx(void *key, int page, int offset);
-
-    //获取键值为key的所有项
-    map<int, int> getAllIx(void *key);
-
-    //获取键值为key,位置大于page-offset的第一个项
-    bool getIx(void *key,int page,int offset, int& rpage, int& roffset);
-
     //获取一个空页,返回页号
-    int getEmptyPage();
+    bool getEmptyPage(int& idx);
     //将某一页设置为空,返回成功与否
     bool setEmptyPage(int id);
 
-    /* 从第id个块中读取B+Tree节点数据到node中 */
+    /* 从第id个块中读取B+Tree节点数据 */
     void readNode(BPlusNode* node, int id);
 
     //比较两个key值的大小,若大小相同则进一步比较其存储位置,返回key1<key2
-    bool compare(void* key1, void* key2, int page1, int page2,int offset1, int offset2)
+    bool compare(void* key1, void* key2, int page1, int page2,int offset1, int offset2);
     //只进行键值比较,返回key1<key2
-    bool compareKey(void *key1, void *key2)
+    bool compareKey(void *key1, void *key2);
+
+    //索引Scan
+    bool OpenScan(void *pData, bool lower);
+	bool GetPrevEntry(int &page, int &offset);
+	bool GetNextEntry(int &page, int &offset);
+	bool CloseScan();
+	
 };
 
 //索引管理模块
@@ -102,7 +102,7 @@ public:
     //创建,删除,打开,关闭索引,ixName为保存索引的文件名
 	bool CreateIndex(const char *ixName, int ixType, int ixSize);
 	bool DeleteIndex(const char *ixName);
-	bool OpenIndex(const char *ixName, SIndexManager* sim);
+	bool OpenIndex(const char *ixName, int& fileID);
     bool CloseIndex(SIndexManager* sim);
 };
 

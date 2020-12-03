@@ -37,6 +37,7 @@ public:
 	 * FilManager构造函数
 	 */
 	FileManager() {
+		cout << "new FileManager()" << endl;
 		fm = new MyBitMap(MAX_FILE_NUM, 1);
 		tm = new MyBitMap(MAX_TYPE_NUM, 1);
 	}
@@ -93,6 +94,7 @@ public:
 		fm->setBit(fileID, 1);
 		int f = fd[fileID];
 		close(f);
+		cout << "closeFile() " << fileID << endl;
 		return 0;
 	}
 	/*
@@ -103,6 +105,7 @@ public:
 	 */
 	bool createFile(const char* name) {
 		_createFile(name);
+		cout << "createFile() " << name << endl;
 		return true;
 	}
 	/*
@@ -114,6 +117,7 @@ public:
 	 */
 	bool openFile(const char* name, int& fileID) {
 		fileID = fm->findLeftOne();
+		cout << "openFile() " << name << " " << fileID << endl;
 		fm->setBit(fileID, 0);
 		_openFile(name, fileID);
 		return true;

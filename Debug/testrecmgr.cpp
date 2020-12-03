@@ -28,7 +28,8 @@ int main() {
 	fm->openFile("testfile.txt", fileID); //打开文件，fileID是返回的文件id
 	RecManager * rm = new RecManager(bpm, fileID, sizeof(double));
 
-	for (int i = 1; i <= 100000; i++) {
+	puts("inserting data");
+	for (int i = 1; i <= 100; i++) {
 		int page, slot;
 		unsigned int id;
 		double *d = new double(rand() / 1000.0);
@@ -61,6 +62,7 @@ int main() {
 		}
 	}
 
+	puts("scanning data");
 	RecManager::Iterator * iter = new RecManager::Iterator(rm);
 	BufType e;
 	int page, slot;

@@ -434,13 +434,14 @@ bool SIndexManager::getEmptyPage(int& idx)
 //将某一页设置为空,返回成功与否
 bool SIndexManager::setEmptyPage(int idx)
 {
-    if (idx > 1 && idx < DATA_SIZE_IX << 3)
-    {
+    if (idx > 1 && idx < DATA_SIZE_IX << 3) {
         (*this->bmPage)[idx] = false;
         this->writeInfo();
         return true;
+    } else {
+        printf("Error, can't set empty page\n");
+        return false;
     }
-    return false;
 }
 
 bool SIndexManager::compare(void *key1, void *key2, int page1, int page2, int offset1, int offset2)

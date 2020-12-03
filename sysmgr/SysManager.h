@@ -1,8 +1,10 @@
 #pragma once
 
-#include "../pf/pf.h"
-#include "../rm/rm.h"
-#include "../ix/ix.h"
+#include "../filesystem/bufmanager/BufPageManager.h"
+#include "../filesystem/fileio/FileManager.h"
+#include "../filesystem/utils/pagedef.h"
+#include "../recmgr/RecManager.h"
+#include "../idxmgr/IndexManager.h"
 #include <string>
 #include <map>
 #include <vector>
@@ -10,7 +12,7 @@
 
 struct AttrInfo {
 	string attrName;
-	AttrType attrType;
+	int attrType;
 	int attrLength; // bytes, completed by SM for INTEGER & FLOAT
 	bool notNull;
 	bool primary;
@@ -31,13 +33,13 @@ struct TableInfo {
 	set<string> foreignSet; // completed by SM
 };
 
-class SM_Manager {
+class SysManager {
 public:
 	FileManager *fileManager;
 	BufPageManager *bufPageManager;
 	
-	SM_Manager(IX_Manager *ixm, RM_Manager *rmm, FileManager *_fileManager, BufPageManager *_bufPageManager);
-	~SM_Manager();
+	SysManager(IndexManager *ixm, FileManager *_fileManager, BufPageManager *_bufPageManager);
+	~SysManager();
 	
 	// each record is started with 8 bytes containing the NULL bitmap. 1 represents not null and 0 represents null.
 	void OpenDB(const string DBName);
@@ -45,24 +47,23 @@ public:
 	void Show();
 	void CreateTable(TableInfo* table);
 	void DropTable(const string tableName);
-	void CreateIndex(const string tableName, const vector<string> attrs);
-	void DropIndex(const string tableName, const vector<string> attrs);
-	void AddPrimaryKey(const string tableName, const vector<string> attrs);
-	void DropPrimaryKey(const string tableName);
-	void AddForeignKey(const string tableName, vector<string> attrs, const string refName, vector<string> foreigns);
-	void DropForeignKey(const string tableName, string refName);
-	void AddColumn(const string tableName, AttrInfo attr);
-	void DropColumn(const string tableName, string attrName);
+	// void CreateIndex(const string tableName, const vector<string> attrs);
+	// void DropIndex(const string tableName, const vector<string> attrs);
+	// void AddPrimaryKey(const string tableName, const vector<string> attrs);
+	// void DropPrimaryKey(const string tableName);
+	// void AddForeignKey(const string tableName, vector<string> attrs, const string refName, vector<string> foreigns);
+	// void DropForeignKey(const string tableName, string refName);
+	// void AddColumn(const string tableName, AttrInfo attr);
+	// void DropColumn(const string tableName, string attrName);
 	
 	bool _checkForeignKeyOnTable(int tableID);
 	int _fromNameToID(const string tableName);
 	int _fromNameToID(const string attrName, const int tableID);
-	BufType _getPrimaryKey(int tableID, BufType data);
+	// BufType _getPrimaryKey(int tableID, BufType data);
 	string _DBName;
 	int _tableNum;
 	std::vector<TableInfo> _tables;
 	std::map<std::string, int> _tableFileID;
 private:
-	IX_Manager *_ixm;
-	RM_Manager *_rmm;
+	IndexManager *_ixm;
 };

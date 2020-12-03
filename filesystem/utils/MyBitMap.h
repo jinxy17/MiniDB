@@ -163,6 +163,7 @@ public:
 		return i % 61;
 	}
 	static void initConst() {
+		cout << "initConst()" << endl;
 		for (int i = 0; i < 32; ++ i) {
 			unsigned int k = (1 << i);
 			h[_hash(k)] = i;
