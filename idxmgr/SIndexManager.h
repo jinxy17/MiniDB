@@ -62,6 +62,8 @@ public:
     //只进行键值比较,返回key1<key2
     bool compareKey(void *key1, void *key2);
 
+    bool Exists(void *key);
+
     //索引Scan
     bool OpenScan(void *pData, bool lower);
 	bool GetPrevEntry(int &page, int &offset);

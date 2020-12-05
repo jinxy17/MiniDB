@@ -20,7 +20,7 @@ public:
 	bool DeleteIndex(const char *ixName);
 	
 	bool OpenIndex(const char *ixName, int& fileID);
-    bool CloseIndex(SIndexManager* sim);
+    bool CloseIndex(int fileID);
 };
 
 #endif

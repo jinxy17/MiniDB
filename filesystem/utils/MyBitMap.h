@@ -15,11 +15,11 @@ using namespace std;
 #define MAX_INNER_NUM 67
 //#define MOD 61
 #define BIAS 5
-static unsigned char h[61];
 
 
 class MyBitMap {
 protected:
+	static unsigned char h[61];
 //	static const int LEAF_BIT = 32;
 //	static const int MAX_LEVEL = 5;
 //	static const int MAX_INNER_NUM = 10;
@@ -163,7 +163,6 @@ public:
 		return i % 61;
 	}
 	static void initConst() {
-		cout << "initConst()" << endl;
 		for (int i = 0; i < 32; ++ i) {
 			unsigned int k = (1 << i);
 			h[_hash(k)] = i;

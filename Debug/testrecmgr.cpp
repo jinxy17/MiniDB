@@ -23,13 +23,13 @@ int main() {
 	MyBitMap::initConst();   //新加的初始化
 	FileManager* fm = new FileManager();
 	BufPageManager* bpm = new BufPageManager(fm);
-	fm->createFile("testfile.txt"); //新建文件
+	fm->createFile("testrm"); //新建文件
 	int fileID;
-	fm->openFile("testfile.txt", fileID); //打开文件，fileID是返回的文件id
-	RecManager * rm = new RecManager(bpm, fileID, sizeof(double));
+	fm->openFile("testrm", fileID); //打开文件，fileID是返回的文件id
+	RecManager * rm = new RecManager(bpm, fileID, sizeof(double), true);
 
 	puts("inserting data");
-	for (int i = 1; i <= 100; i++) {
+	for (int i = 1; i <= 10000; i++) {
 		int page, slot;
 		unsigned int id;
 		double *d = new double(rand() / 1000.0);
@@ -81,8 +81,14 @@ int main() {
 		rec.erase(it);
 	}
 	if (rec.size() > 0) puts("failed");
+	
+	delete iter;
+	delete rm;
 	fm->closeFile(fileID);
+	delete bpm;
+	delete fm;
 	puts("test completed");
+	system("rm testrm");
 
 	
 	return 0;

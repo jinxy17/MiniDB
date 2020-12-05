@@ -28,23 +28,24 @@ private:
 	
 	
 public:
-	RecManager(BufPageManager * bpm, int fileID, int recSize) {
+	RecManager(BufPageManager * bpm, int fileID, int recSize, bool reset) {
 		this->bpm = bpm;
 		this->fileID = fileID;
-		BufType b = bpm->allocPage(fileID, 0, idxPage, false);
+		BufType b = bpm->getPage(fileID, 0, idxPage);
 
 		this->recSize = (int *)&b[0];
 		this->recPP = (int *)&b[1];
 		this->recNum = (int *)&b[2];
 		this->pageNum = (int *)&b[3];
 		this->bmPage = (bitset<DATA_SIZE*8> *)((unsigned char*)b + DATA_OFFSET);
-		*this->recSize = recSize;
-		*this->recPP = DATA_SIZE/recSize;
-		*this->recNum = 0;
-		*this->pageNum = 1;
-		this->bmPage->reset();
-		(*this->bmPage)[0] = true;
-
+		if (reset) {
+			*this->recSize = recSize;
+			*this->recPP = DATA_SIZE/recSize;
+			*this->recNum = 0;
+			*this->pageNum = 1;
+			this->bmPage->reset();
+			(*this->bmPage)[0] = true;
+		}
 		bpm->markDirty(idxPage);
 	}
 	~RecManager() {
@@ -63,7 +64,7 @@ public:
 		if (curPage == *pageNum) {
 			// create new page
 			*pageNum += 1;
-			b = bpm->allocPage(fileID, curPage, idxRec, false);
+			b = bpm->getPage(fileID, curPage, idxRec);
 			bmRec = (bitset<DATA_OFFSET*8> *)b;
 			bmRec->reset();
 		} else {

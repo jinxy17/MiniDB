@@ -20,9 +20,10 @@ bool IndexManager::CreateIndex(const char *ixName, int ixType, int ixSize){
         fprintf(stderr, "Error: Can't create index!\n");
         return false;
     }
-    SIndexManager*   sim = new SIndexManager(this->bpm,fileID);
+    SIndexManager* sim = new SIndexManager(this->bpm,fileID);
     sim->init(ixSize,ixType);
     delete sim;
+    this->fm->closeFile(fileID);
     return true;
 }
 
@@ -44,11 +45,11 @@ bool IndexManager::OpenIndex(const char *ixName, int& fileID){
     return true;
 }
 
-bool IndexManager::CloseIndex(SIndexManager* sim){
-    if (fm->closeFile(sim->fileID)) {
+bool IndexManager::CloseIndex(int fileID){
+    if (fm->closeFile(fileID)) {
         fprintf(stderr, "Error: Can't close index!\n");
         return false;
     }
-    delete sim;
+    // delete sim;
     return true;
 }

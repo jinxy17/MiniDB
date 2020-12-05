@@ -9,6 +9,7 @@ SIndexManager::SIndexManager(BufPageManager *bpm, int fileID)
 
 SIndexManager::~SIndexManager()
 {
+    delete this->bmPage;
     this->bpm->close();
 }
 
@@ -513,6 +514,45 @@ bool SIndexManager::compareKey(void *key1, void *key2)
         }
     }
     return false;
+}
+
+bool SIndexManager::Exists(void *key) {
+    int page = -1;
+	int offset = page;
+
+    //获取根节点的页号
+    int id = this->rootIdx;
+    BPlusNode *node = new BPlusNode();
+    this->readNode(node, id);
+    while (*node->isLeaf == false)
+    {
+        //非叶子节点,继续向下深入
+        //由右边向左遍历,寻找插入位置
+        int i = (*node->keyNum) - 1;
+        while (i > 0 && compare(key, node->key + i * (this->ixSize), page, node->pages[i], offset, node->offsets[i]))
+            i--;
+        id = node->childs[i];
+        this->readNode(node, id);
+    }
+    scan_nodeID = id;
+	scan_entryID = -1;
+	for (int i = 0; i <= *node->keyNum; i++) {
+        if (i == *node->keyNum) {
+            scan_nodeID = *node->next;
+		    scan_entryID = 0;
+        } else if (compare(key, node->key + i * (this->ixSize), page, node->pages[i], offset, node->offsets[i])) {
+            scan_entryID = i;
+			break;
+        }
+	}
+    bool ret;
+	if (scan_nodeID == 0) {
+        ret =  false;
+    } else {
+        ret = !compareKey(key, node->key + scan_entryID * (this->ixSize));
+    }
+    delete node;
+    return ret;
 }
 
 bool SIndexManager::OpenScan(void *key, bool lower) {

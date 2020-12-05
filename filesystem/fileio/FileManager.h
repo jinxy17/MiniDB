@@ -18,7 +18,7 @@ private:
 	int _createFile(const char* name) {
 		FILE* f = fopen(name, "a+");
 		if (f == NULL) {
-			cout << "fail" << endl;
+			cout << "paged file: create file failed" << endl;
 			return -1;
 		}
 		fclose(f);
@@ -37,7 +37,6 @@ public:
 	 * FilManager构造函数
 	 */
 	FileManager() {
-		cout << "new FileManager()" << endl;
 		fm = new MyBitMap(MAX_FILE_NUM, 1);
 		tm = new MyBitMap(MAX_TYPE_NUM, 1);
 	}
@@ -91,10 +90,10 @@ public:
 	 * 返回:操作成功，返回0
 	 */
 	int closeFile(int fileID) {
+		cout << "closeFile() " << fileID << endl;
 		fm->setBit(fileID, 1);
 		int f = fd[fileID];
 		close(f);
-		cout << "closeFile() " << fileID << endl;
 		return 0;
 	}
 	/*
@@ -105,7 +104,6 @@ public:
 	 */
 	bool createFile(const char* name) {
 		_createFile(name);
-		cout << "createFile() " << name << endl;
 		return true;
 	}
 	/*
@@ -120,6 +118,10 @@ public:
 		cout << "openFile() " << name << " " << fileID << endl;
 		fm->setBit(fileID, 0);
 		_openFile(name, fileID);
+		if (fileID == -1) {
+			cout << "paged file: open file failed" << endl;
+			return false;
+		}
 		return true;
 	}
 	int newType() {

@@ -92,7 +92,9 @@ void SysManager::OpenDB(const string DBName) {
 						int *d = new int; metain >> *d;
 						_tables[i].attrs[j].defaultValue = (BufType)d;
 					} else if (_tables[i].attrs[j].attrType == STRING) {
-						string d; getline(metain, d);
+						string d; 
+						getline(metain, d); // "\n"
+						getline(metain, d);
 						_tables[i].attrs[j].defaultValue = (BufType)(new char[_tables[i].attrs[j].attrLength]);
 						memset(_tables[i].attrs[j].defaultValue, 0, _tables[i].attrs[j].attrLength * sizeof(char));
 						strcpy((char*)_tables[i].attrs[j].defaultValue, d.c_str());
@@ -157,10 +159,13 @@ void SysManager::CloseDB() {
 				metaout << "DEFAULT\n";
 				if (_tables[i].attrs[j].attrType == INT) {
 					metaout << *((int*)_tables[i].attrs[j].defaultValue) << "\n";
+					delete (int*)_tables[i].attrs[j].defaultValue;
 				} else if (_tables[i].attrs[j].attrType == STRING) {
 					metaout << (char*)_tables[i].attrs[j].defaultValue << "\n";
+					delete [] (char*)_tables[i].attrs[j].defaultValue;
 				} else if (_tables[i].attrs[j].attrType == FLOAT) {
 					metaout << *((double*)_tables[i].attrs[j].defaultValue) << "\n";
+					delete (double*)_tables[i].attrs[j].defaultValue;
 				}
 			}
 			if (_tables[i].attrs[j].reference != "") {
@@ -203,6 +208,17 @@ void SysManager::CreateTable(TableInfo* table) {
 		recordSize += size;
 		if (table->attrs[i].primary) {
 			table->attrs[i].notNull = true;
+		}
+		if (table->attrs[i].defaultValue != nullptr) {
+			if (table->attrs[i].attrType == INT) {
+				table->attrs[i].defaultValue = (BufType)new int(*(int *)table->attrs[i].defaultValue);
+			} else if (table->attrs[i].attrType == STRING) {
+				BufType temp = (BufType)(new char[table->attrs[i].attrLength]);
+				strcpy((char*)temp, (char*)table->attrs[i].defaultValue);
+				table->attrs[i].defaultValue = temp;
+			} else if (table->attrs[i].attrType == FLOAT) {
+				table->attrs[i].defaultValue = (BufType)new double(*(double *)table->attrs[i].defaultValue);
+			}
 		}
 		if (table->attrs[i].reference != "") {
 			if (table->attrs[i].reference == table->tableName) {
@@ -253,7 +269,7 @@ void SysManager::CreateTable(TableInfo* table) {
 	fileManager->createFile(table->tableName.c_str());
 	int fileID;
 	fileManager->openFile(table->tableName.c_str(), fileID);
-	cout << table->tableName << ": " << fileID << endl;
+	// cout << table->tableName << ": " << fileID << endl;
 	_tableFileID[table->tableName] = fileID;
 	if (_tables[_tableNum].primary.size() != 0) {
 		int primary_size = 0;
@@ -288,242 +304,179 @@ void SysManager::DropTable(const string tableName) {
 	_tableNum--;
 }
 
-// void SysManager::CreateIndex(const string tableName, const vector<string> attrs) {
-// 	if (attrs.size() == 1) {
-// 		string attr = attrs[0];
-// 		int tableID, attrID;
-// 		tableID = _fromNameToID(tableName);
-// 		if (tableID == -1) {
-// 			fprintf(stderr, "Error: table does not exist!\n");
-// 			return;
-// 		}
-// 		bool found = false;
-// 		for (int i = 0; i < _tables[tableID].attrNum; i++) if (_tables[tableID].attrs[i].attrName == attr) {
-// 			found = true;
-// 			attrID = i;
-// 			if (!_tables[tableID].attrs[i].notNull) {
-// 				fprintf(stderr, "Error: the column must be not null!\n");
-// 				return;
-// 			}
-// 			if (_tables[tableID].attrs[i].haveIndex) {
-// 				fprintf(stderr, "Error: index already exists!\n");
-// 				return;
-// 			}
-// 			break;
-// 		}
-// 		if (!found) {
-// 			fprintf(stderr, "Error: column does not exist!\n");
-// 			return;
-// 		}
-// 		int fileID = _tableFileID[tableName];
-// 		_tables[tableID].attrs[attrID].haveIndex = true;
-// 		_ixm->CreateIndex((tableName + "." + attr).c_str(), _tables[tableID].attrs[attrID].attrType, _tables[tableID].attrs[attrID].attrLength);
-// 		int indexID;
-// 		_ixm->OpenIndex((tableName + "." + attr).c_str(), indexID);
-// 		SIndexManager * sixm = new SIndexManager(bufPageManager, indexID);
-// 		RecManager * rm = new RecManager(bufPageManager, fileID, _tables[tableID].recordSize);
-// 		RecManager::Iterator * iter = new RecManager::Iterator(rm);
-// 		BufType e;
-// 		unsigned int id;
-// 		while (iter->next(e, id)) {
-// 			int pageID = id >> 16;
-// 			int slotID = (id << 16 >> 16);
-// 			BufType insertData = e + _tables[tableID].attrs[attrID].offset;
-// 			cout << " - insertData:" << insertData << endl;
-// 			// sixm->insertIx((void*)insertData, pageID, slotID);
-// 		}
-// 		_ixm->CloseIndex(sixm);
-// 		delete iter;
-// 		delete rm;
-// 		delete sixm;
+void SysManager::CreateIndex(const string tableName, const string attr) {
+	cout << "CreateIndex():" << endl;
+	int tableID, attrID;
+	tableID = _fromNameToID(tableName);
+	if (tableID == -1) {
+		fprintf(stderr, "Error: table does not exist!\n");
+		return;
+	}
+	bool found = false;
+	for (int i = 0; i < _tables[tableID].attrNum; i++) if (_tables[tableID].attrs[i].attrName == attr) {
+		found = true;
+		attrID = i;
+		if (!_tables[tableID].attrs[i].notNull) {
+			fprintf(stderr, "Error: the column must be not null!\n");
+			return;
+		}
+		if (_tables[tableID].attrs[i].haveIndex) {
+			fprintf(stderr, "Error: index already exists!\n");
+			return;
+		}
+		break;
+	}
+	if (!found) {
+		fprintf(stderr, "Error: column does not exist!\n");
+		return;
+	}
+	int fileID = _tableFileID[tableName];
+	_tables[tableID].attrs[attrID].haveIndex = true;
+	_ixm->CreateIndex((tableName + "." + attr).c_str(), _tables[tableID].attrs[attrID].attrType, _tables[tableID].attrs[attrID].attrLength);
+	int indexID;
+	_ixm->OpenIndex((tableName + "." + attr).c_str(), indexID);
+	SIndexManager * sixm = new SIndexManager(bufPageManager, indexID);
+	// cout << " - recSize:" << _tables[tableID].recordSize << endl;
+	RecManager * rm = new RecManager(bufPageManager, fileID, _tables[tableID].recordSize, false);
+	RecManager::Iterator * iter = new RecManager::Iterator(rm);
+	BufType e;
+	unsigned int id;
+	while (iter->next(e, id)) {
+		int pageID = id >> 16;
+		int slotID = (id << 16 >> 16);
+		BufType insertData = e + _tables[tableID].attrs[attrID].offset;
+		// cout << " - insertData:" << (const char *)insertData << endl;
+		sixm->insertIx((void*)insertData, pageID, slotID);
+	}
+	delete iter;
+	delete rm;
+	delete sixm;
+	_ixm->CloseIndex(indexID);
+}
 
+void SysManager::DropIndex(const string tableName, const string attr) {
+	int tableID = _fromNameToID(tableName), attrID;
+	if (tableID == -1) {
+		fprintf(stderr, "Error: table does not exist!\n");
+		return;
+	}
+	bool found = false;
+	for (int i = 0; i < _tables[tableID].attrNum; i++) if (_tables[tableID].attrs[i].attrName == attr) {
+		found = true;
+		attrID = i;
+		if (!_tables[tableID].attrs[i].haveIndex) {
+			fprintf(stderr, "Error: index does not exist!\n");
+			return;
+		}
+		break;
+	}
+	if (!found) {
+		fprintf(stderr, "Error: column does not exist!\n");
+		return;
+	}
+	_tables[tableID].attrs[attrID].haveIndex = false;
+	_ixm->DeleteIndex((tableName + "." + attr).c_str());
+}
 
-
-// 		// RM_FileHandle *filehandle = new RM_FileHandle(fileManager, bufPageManager, fileID);
-// 		// RM_FileScan *filescan = new RM_FileScan(fileManager, bufPageManager);
-// 		// if (!filescan->OpenScan(filehandle)) return;
-// 		//cout << "open file scan" << endl;
-// 		// _tables[tableID].attrs[attrID].haveIndex = true;
-// 		// _ixm->CreateIndex(tableName.c_str(), attr.c_str(), _tables[tableID].attrs[attrID].attrType, _tables[tableID].attrs[attrID].attrLength);
-// 		// int indexID;
-// 		// _ixm->OpenIndex(tableName.c_str(), attr.c_str(), indexID);
-// 		// IX_IndexHandle *indexhandle = new IX_IndexHandle(fileManager, bufPageManager, indexID);
-// 		//cout << "open index" << endl;
-// 		// while (1) {
-// 		// 	int pageID, slotID;
-// 		// 	BufType data = new unsigned int[filehandle->_header.recordSize];
-// 		// 	bool scanNotEnd = filescan->GetNextRecord(pageID, slotID, data);
-// 		// 	BufType insertData = data + _tables[tableID].attrs[attrID].offset;
-// 		// 	//cout << pageID << " " << slotID << " " << *(int*)insertData << endl;
-// 		// 	indexhandle->InsertEntry((void*)insertData, pageID, slotID);
-// 		// 	delete [] data;
-// 		// 	if (!scanNotEnd) break;
-// 		// }
-		
-// 		/*IX_IndexScan *indexscan = new IX_IndexScan(fileManager, bufPageManager, indexID);
-// 		char *sss = new char[10000];
-// 		memset(sss, 0, 10000);
-// 		indexscan->OpenScan(sss, true);
-// 		while (true) {
-// 			int page, slot;
-// 			bool hasNext = indexscan->GetNextEntry(page, slot);
-// 			if (!hasNext) break;
-// 		}*/
-		
-// 		// delete filescan, filehandle, indexhandle;
-		
-// 		// _ixm->CloseIndex(sixm);
-// 	}
-// }
-// void SysManager::DropIndex(const string tableName, const vector<string> attrs) {
-// 	if (attrs.size() == 1) {
-// 		string attr = attrs[0];
-// 		int tableID = _fromNameToID(tableName), attrID;
-// 		if (tableID == -1) {
-// 			fprintf(stderr, "Error: table does not exist!\n");
-// 			return;
-// 		}
-// 		bool found = false;
-// 		for (int i = 0; i < _tables[tableID].attrNum; i++) if (_tables[tableID].attrs[i].attrName == attr) {
-// 			found = true;
-// 			attrID = i;
-// 			if (!_tables[tableID].attrs[i].haveIndex) {
-// 				fprintf(stderr, "Error: index does not exist!\n");
-// 				return;
-// 			}
-// 			break;
-// 		}
-// 		if (!found) {
-// 			fprintf(stderr, "Error: column does not exist!\n");
-// 			return;
-// 		}
-// 		_tables[tableID].attrs[attrID].haveIndex = false;
-// 		_ixm->DestroyIndex(tableName.c_str(), attr.c_str());
-// 	}
-// }
-// void SysManager::AddPrimaryKey(const string tableName, const vector<string> attrs) {
-// 	int tableID = _fromNameToID(tableName);
-// 	if (tableID == -1) {
-// 		fprintf(stderr, "Error: invalid table!\n");
-// 		return;
-// 	}
-// 	if (_tables[tableID].primary.size() != 0) {
-// 		fprintf(stderr, "Error: primary key already exists!\n");
-// 		return;
-// 	}
-// 	int primarySize = 0;
-// 	for (int i = 0; i < attrs.size(); i++) {
-// 		int attrID = _fromNameToID(attrs[i], tableID);
-// 		//cout << attrID << endl;
-// 		if (attrID == -1) {
-// 			fprintf(stderr, "Error: invalid columns!\n");
-// 			_tables[tableID].primary.clear();
-// 			return;
-// 		}
-// 		if (_tables[tableID].attrs[attrID].reference != "") {
-// 			fprintf(stderr, "Error: primary keys can not be foreign keys!\n");
-// 			_tables[tableID].primary.clear();
-// 			return;
-// 		}
-// 		if (!_tables[tableID].attrs[attrID].notNull) {
-// 			fprintf(stderr, "Error: primary keys must be not null!\n");
-// 			_tables[tableID].primary.clear();
-// 			return;
-// 		}
-// 		_tables[tableID].primary.push_back(attrID);
-// 		primarySize += _tables[tableID].attrs[attrID].attrLength;
-// 	}
-// 	sort(_tables[tableID].primary.begin(), _tables[tableID].primary.end());
-// 	for (int i = 0; i < _tables[tableID].primary.size(); i++) {
-// 		_tables[tableID].attrs[_tables[tableID].primary[i]].primary = true;
-// 	}
-// 	_tables[tableID].primarySize = primarySize;
-// 	int fileID = _tableFileID[tableName];
-// 	RM_FileHandle *filehandle = new RM_FileHandle(fileManager, bufPageManager, fileID);
-// 	RM_FileScan *filescan = new RM_FileScan(fileManager, bufPageManager);
-// 	bool scanNotEnd = filescan->OpenScan(filehandle);
-// 	//cout << "open file scan" << endl;
-// 	_ixm->CreateIndex(tableName.c_str(), "primary", STRING, primarySize);
-// 	int indexID;
-// 	_ixm->OpenIndex(tableName.c_str(), "primary", indexID);
-// 	IX_IndexHandle *indexhandle = new IX_IndexHandle(fileManager, bufPageManager, indexID);
-// 	//cout << "open index" << endl;
-// 	BufType data = new unsigned int[filehandle->_header.recordSize];
-// 	int cnt = 0;
-// 	while (scanNotEnd) {
-// 		int pageID, slotID;
-// 		scanNotEnd = filescan->GetNextRecord(pageID, slotID, data);
-// 		BufType insertData = _getPrimaryKey(tableID, data);
-// 		cnt++;
-// 		/*if (cnt <= 3) {
-// 			for (int i = 0; i < primarySize; i++) {
-// 				printf("%d ", ((char*)insertData)[i]);
-// 			}
-// 			puts("");
-// 		}*/
-// 		//cout << *(int*)insertData << endl;
-// 		if (indexhandle->CheckEntry((void*)insertData)) {
-// 			fprintf(stderr, "Error: repetitive primary keys!\n");
-// 			for (int i = 0; i < _tables[tableID].primary.size(); i++) {
-// 				_tables[tableID].attrs[_tables[tableID].primary[i]].primary = false;
-// 			}
-// 			_tables[tableID].primary.clear();
-// 			_tables[tableID].primarySize = 0;
-// 			delete [] data;
-// 			delete [] insertData;
-// 			delete filescan, filehandle, indexhandle;
-// 			_ixm->CloseIndex(indexID);
-// 			system((string("rm ") + tableName + string(".primary")).c_str());
-// 			return;
-// 		}
-// 		/*if (cnt == 50) {
-// 			system("sleep 10000");
-// 		}*/
-// 		//cout << "insert new" << endl;
-// 		indexhandle->InsertEntry((void*)insertData, pageID, slotID);
-// 		delete [] insertData;
-		
-// 		//if (!scanNotEnd) break;
-// 	}
+void SysManager::AddPrimaryKey(const string tableName, const vector<string> attrs) {
+	int tableID = _fromNameToID(tableName);
+	if (tableID == -1) {
+		fprintf(stderr, "Error: invalid table!\n");
+		return;
+	}
+	if (_tables[tableID].primary.size() != 0) {
+		fprintf(stderr, "Error: primary key already exists!\n");
+		return;
+	}
+	int primarySize = 0;
+	for (int i = 0; i < attrs.size(); i++) {
+		int attrID = _fromNameToID(attrs[i], tableID);
+		//cout << attrID << endl;
+		if (attrID == -1) {
+			fprintf(stderr, "Error: invalid columns!\n");
+			_tables[tableID].primary.clear();
+			return;
+		}
+		if (_tables[tableID].attrs[attrID].reference != "") {
+			fprintf(stderr, "Error: primary keys can not be foreign keys!\n");
+			_tables[tableID].primary.clear();
+			return;
+		}
+		if (!_tables[tableID].attrs[attrID].notNull) {
+			fprintf(stderr, "Error: primary keys must be not null!\n");
+			_tables[tableID].primary.clear();
+			return;
+		}
+		_tables[tableID].primary.push_back(attrID);
+		primarySize += _tables[tableID].attrs[attrID].attrLength;
+	}
+	sort(_tables[tableID].primary.begin(), _tables[tableID].primary.end());
+	for (int i = 0; i < _tables[tableID].primary.size(); i++) {
+		_tables[tableID].attrs[_tables[tableID].primary[i]].primary = true;
+	}
+	_tables[tableID].primarySize = primarySize;
+	int fileID = _tableFileID[tableName];
 	
-// 	/*for (int i = 0; i < _tables[tableID].primary.size(); i++) {
-// 		cout << _tables[tableID].primary[i] << endl;
-// 	}*/
-// 	/*IX_IndexScan *indexscan = new IX_IndexScan(fileManager, bufPageManager, indexID);
-// 	char *sss = new char[10000];
-// 	memset(sss, 0, 10000);
-// 	indexscan->OpenScan(sss, true);
-// 	while (true) {
-// 		int page, slot;
-// 		bool hasNext = indexscan->GetNextEntry(page, slot);
-// 		if (!hasNext) break;
-// 	}*/
-	
-// 	delete [] data;
-// 	delete filescan, filehandle, indexhandle;
-// 	_ixm->CloseIndex(indexID);
-// }
-// void SysManager::DropPrimaryKey(const string tableName) {
-// 	int tableID = _fromNameToID(tableName);
-// 	if (tableID == -1) {
-// 		fprintf(stderr, "Error: invalid table!\n");
-// 		return;
-// 	}
-// 	if (_tables[tableID].primary.size() == 0) {
-// 		fprintf(stderr, "Error: primary key does not exist!\n");
-// 		return;
-// 	}
-// 	for (int i = 0; i < _tableNum; i++) if (_tables[i].foreignSet.find(tableName) != _tables[i].foreignSet.end()) {
-// 		fprintf(stderr, "Error: foreign keys on the table!\n");
-// 		return;
-// 	}
-// 	for (int i = 0; i < _tables[tableID].attrNum; i++) {
-// 		_tables[tableID].attrs[i].primary = false;
-// 	}
-// 	_tables[tableID].primary.clear();
-// 	_tables[tableID].primarySize = 0;
-// 	system((string("rm ") + tableName + string(".primary")).c_str());
-// }
+	_ixm->CreateIndex((tableName + ".primary").c_str(), STRING, primarySize);
+	int indexID;
+	_ixm->OpenIndex((tableName + ".primary").c_str(), indexID);
+	SIndexManager * sixm = new SIndexManager(bufPageManager, indexID);
+	RecManager * rm = new RecManager(bufPageManager, fileID, _tables[tableID].recordSize, false);
+	RecManager::Iterator * iter = new RecManager::Iterator(rm);
+	BufType data;
+	unsigned int id;
+	while (iter->next(data, id)) {
+		int pageID = id >> 16;
+		int slotID = (id << 16 >> 16);
+		BufType insertData = _getPrimaryKey(tableID, data);
+		if (sixm->Exists((void*)insertData)) {
+			fprintf(stderr, "Error: repetitive primary keys!\n");
+			for (int i = 0; i < _tables[tableID].primary.size(); i++) {
+				_tables[tableID].attrs[_tables[tableID].primary[i]].primary = false;
+			}
+			_tables[tableID].primary.clear();
+			_tables[tableID].primarySize = 0;
+			delete [] insertData;
+			delete iter;
+			delete rm;
+			delete sixm;
+			_ixm->CloseIndex(indexID);
+			system((string("rm ") + tableName + string(".primary")).c_str());
+			return;
+		}
+		sixm->insertIx((void*)insertData, pageID, slotID);
+		delete [] insertData;
+	}
+	delete iter;
+	delete rm;
+	delete sixm;
+	_ixm->CloseIndex(indexID);
+
+
+}
+
+void SysManager::DropPrimaryKey(const string tableName) {
+	int tableID = _fromNameToID(tableName);
+	if (tableID == -1) {
+		fprintf(stderr, "Error: invalid table!\n");
+		return;
+	}
+	if (_tables[tableID].primary.size() == 0) {
+		fprintf(stderr, "Error: primary key does not exist!\n");
+		return;
+	}
+	for (int i = 0; i < _tableNum; i++) if (_tables[i].foreignSet.find(tableName) != _tables[i].foreignSet.end()) {
+		fprintf(stderr, "Error: foreign keys on the table!\n");
+		return;
+	}
+	for (int i = 0; i < _tables[tableID].attrNum; i++) {
+		_tables[tableID].attrs[i].primary = false;
+	}
+	_tables[tableID].primary.clear();
+	_tables[tableID].primarySize = 0;
+	system((string("rm ") + tableName + string(".primary")).c_str());
+}
+
 // void SysManager::AddForeignKey(const string tableName, vector<string> attrs, const string refName, vector<string> foreigns) {
 // 	int tableID = _fromNameToID(tableName);
 // 	if (tableID == -1) {
@@ -561,7 +514,6 @@ void SysManager::DropTable(const string tableName) {
 // 			return;
 // 		}
 // 	}
-	
 // 	int fileID = _tableFileID[tableName];
 // 	RM_FileHandle *filehandle = new RM_FileHandle(fileManager, bufPageManager, fileID);
 // 	RM_FileScan *filescan = new RM_FileScan(fileManager, bufPageManager);
@@ -613,6 +565,7 @@ void SysManager::DropTable(const string tableName) {
 // 	_ixm->CloseIndex(indexID);
 // 	delete indexhandle, filescan, filehandle;
 // }
+
 // void SysManager::DropForeignKey(const string tableName, string refName) {
 // 	int tableID = _fromNameToID(tableName);
 // 	if (tableID == -1) {
@@ -638,6 +591,7 @@ void SysManager::DropTable(const string tableName) {
 // 		_tables[tableID].attrs[i].foreignKeyName = "";
 // 	}
 // }
+
 // void SysManager::AddColumn(const string tableName, AttrInfo attr) {
 // 	int tableID = _fromNameToID(tableName);
 // 	if (tableID == -1) {
@@ -705,6 +659,7 @@ void SysManager::DropTable(const string tableName) {
 // 		AddPrimaryKey(tableName, attrs);
 // 	}
 // }
+
 // void SysManager::DropColumn(const string tableName, string attrName) {
 // 	int tableID = _fromNameToID(tableName);
 // 	if (tableID == -1) {
@@ -814,13 +769,13 @@ int SysManager::_fromNameToID(const string attrName, const int tableID) {
 	return -1;
 }
 
-// BufType SysManager::_getPrimaryKey(int tableID, BufType data) {
-// 	BufType primaryKey = new unsigned int[_tables[tableID].primarySize >> 2];
-// 	int pos = 0;
-// 	for (int i = 0; i < _tables[tableID].attrNum; i++) if (_tables[tableID].attrs[i].primary) {
-// 		memset(primaryKey + pos, 0, sizeof(char) * _tables[tableID].attrs[i].attrLength);
-// 		memcpy(primaryKey + pos, data + _tables[tableID].attrs[i].offset, _tables[tableID].attrs[i].attrLength);
-// 		pos += (_tables[tableID].attrs[i].attrLength >> 2);
-// 	}
-// 	return primaryKey;
-// }
+BufType SysManager::_getPrimaryKey(int tableID, BufType data) {
+	BufType primaryKey = new unsigned int[_tables[tableID].primarySize >> 2];
+	int pos = 0;
+	for (int i = 0; i < _tables[tableID].attrNum; i++) if (_tables[tableID].attrs[i].primary) {
+		memset(primaryKey + pos, 0, sizeof(char) * _tables[tableID].attrs[i].attrLength);
+		memcpy(primaryKey + pos, data + _tables[tableID].attrs[i].offset, _tables[tableID].attrs[i].attrLength);
+		pos += (_tables[tableID].attrs[i].attrLength >> 2);
+	}
+	return primaryKey;
+}

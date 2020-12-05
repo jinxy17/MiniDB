@@ -47,10 +47,10 @@ public:
 	void Show();
 	void CreateTable(TableInfo* table);
 	void DropTable(const string tableName);
-	// void CreateIndex(const string tableName, const vector<string> attrs);
-	// void DropIndex(const string tableName, const vector<string> attrs);
-	// void AddPrimaryKey(const string tableName, const vector<string> attrs);
-	// void DropPrimaryKey(const string tableName);
+	void CreateIndex(const string tableName, const string attr);
+	void DropIndex(const string tableName, const string attr);
+	void AddPrimaryKey(const string tableName, const vector<string> attrs);
+	void DropPrimaryKey(const string tableName);
 	// void AddForeignKey(const string tableName, vector<string> attrs, const string refName, vector<string> foreigns);
 	// void DropForeignKey(const string tableName, string refName);
 	// void AddColumn(const string tableName, AttrInfo attr);
@@ -59,7 +59,7 @@ public:
 	bool _checkForeignKeyOnTable(int tableID);
 	int _fromNameToID(const string tableName);
 	int _fromNameToID(const string attrName, const int tableID);
-	// BufType _getPrimaryKey(int tableID, BufType data);
+	BufType _getPrimaryKey(int tableID, BufType data);
 	string _DBName;
 	int _tableNum;
 	std::vector<TableInfo> _tables;

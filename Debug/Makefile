@@ -1,4 +1,4 @@
-src = ../idxmgr/IndexManager.o ../idxmgr/SIndexManager.o ../sysmgr/SysManager.o
+src = ../filesystem/pf.o ../idxmgr/IndexManager.o ../idxmgr/SIndexManager.o ../sysmgr/SysManager.o
 CXXFLAGS = -std=c++11
 all: testfilesystem testrecmgr testidxmgr testsysmgr create drop
 testfilesystem: testfilesystem.o $(src)

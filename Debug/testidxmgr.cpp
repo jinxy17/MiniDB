@@ -14,8 +14,8 @@ void test_insert()
 	BufPageManager *bpm = new BufPageManager(fm);
 	IndexManager *im = new IndexManager(fm, bpm);
 	int fileID;
-	im->CreateIndex("name", FLOAT, 8);
-	im->OpenIndex("name", fileID);
+	im->CreateIndex("testidx", FLOAT, 8);
+	im->OpenIndex("testidx", fileID);
 	SIndexManager *sim = new SIndexManager(bpm, fileID);
 	printf(" - index opened\n");
 	// sim->Print_Tree();
@@ -29,8 +29,11 @@ void test_insert()
 	}
 	printf(" - inserted %d entries\n", testsize);
 	// sim->Print_Tree();
-	bpm->close();
-	im->CloseIndex(sim);
+	delete sim; // will call bpm->close()
+	im->CloseIndex(fileID); // will call fm->closeFile()
+	delete im;
+	delete bpm;
+	delete fm;
 	printf(" - index closed\n");
 }
 
@@ -41,7 +44,7 @@ void test_delete()
 	BufPageManager *bpm = new BufPageManager(fm);
 	IndexManager *im = new IndexManager(fm, bpm);
 	int fileID;
-	im->OpenIndex("name", fileID);
+	im->OpenIndex("testidx", fileID);
 	SIndexManager *sim = new SIndexManager(bpm, fileID);
 	printf(" - index opened\n");
 	// sim->Print_Tree();
@@ -65,24 +68,11 @@ void test_delete()
 	}
 	printf(" - delete completed:\n");
 	// sim->Print_Tree();
-	bpm->close();
-	im->CloseIndex(sim);
-	printf(" - index closed\n");
-}
-
-void test_filesave()
-{
-	printf("test filesave:\n");
-	FileManager *fm = new FileManager();
-	BufPageManager *bpm = new BufPageManager(fm);
-	IndexManager *im = new IndexManager(fm, bpm);
-	int fileID;
-	im->OpenIndex("name", fileID);
-	SIndexManager *sim = new SIndexManager(bpm, fileID);
-	printf(" - index opened\n");
-	// sim->Print_Tree();
-	bpm->close();
-	im->CloseIndex(sim);
+	delete sim; // will call bpm->close()
+	im->CloseIndex(fileID); // will call fm->closeFile()
+	delete im;
+	delete bpm;
+	delete fm;
 	printf(" - index closed\n");
 }
 
@@ -93,7 +83,7 @@ void test_scan()
 	BufPageManager *bpm = new BufPageManager(fm);
 	IndexManager *im = new IndexManager(fm, bpm);
 	int fileID;
-	im->OpenIndex("name", fileID);
+	im->OpenIndex("testidx", fileID);
 	SIndexManager *sim = new SIndexManager(bpm, fileID);
 	printf(" - index opened\n");
 	// sim->Print_Tree();
@@ -127,9 +117,26 @@ void test_scan()
 		printf(" - test #%d succeed\n",++cnt);
 		sim->CloseScan();
 	}
-	bpm->close();
-	im->CloseIndex(sim);
+
+	delete sim; // will call bpm->close()
+	im->CloseIndex(fileID); // will call fm->closeFile()
+	delete im;
+	delete bpm;
+	delete fm;
 	printf(" - index closed\n");
+}
+
+void test_rm()
+{
+	printf("test rm:\n");
+	FileManager *fm = new FileManager();
+	BufPageManager *bpm = new BufPageManager(fm);
+	IndexManager *im = new IndexManager(fm, bpm);
+	im->DeleteIndex("testidx");
+	delete im;
+	delete bpm;
+	delete fm;
+	printf(" - index removed\n");
 }
 
 int main()
@@ -139,6 +146,6 @@ int main()
 	test_scan();
 	test_delete();
 	test_scan();
-	test_filesave();
+	test_rm();
 	return 0;
 }

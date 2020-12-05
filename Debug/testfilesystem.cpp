@@ -30,16 +30,13 @@ int main() {
 	MyBitMap::initConst();   //新加的初始化
 	FileManager* fm = new FileManager();
 	BufPageManager* bpm = new BufPageManager(fm);
-	int fileID, f2, f3;
-	fm->createFile("tab1"); //新建文件
-	fm->openFile("tab1", fileID); //打开文件，fileID是返回的文件id
+	int fileID, f2;
+	fm->createFile("testfs1"); //新建文件
+	fm->openFile("testfs1", fileID); //打开文件，fileID是返回的文件id
 
-	fm->createFile("tab1.primary");
-    fm->openFile("tab1.primary", f2);
-	
-	fm->createFile("tab2");
-    fm->openFile("tab2", f3);
-	cout << fileID << " " << f2 << " " << f3 << endl;
+	fm->createFile("testfs2");
+    fm->openFile("testfs2", f2);
+
 	for (int pageID = 0; pageID < 1000; ++ pageID) {
 		int index;
 		//为pageID获取一个缓存页
@@ -68,9 +65,13 @@ int main() {
 		// cout << b[0] << ":" << b[1] << endl;
 		bpm->access(index);
 	}
+	// to write back to file: bpm->close() & fm->closeFile()
+	bpm->close();
 	fm->closeFile(fileID);
 	fm->closeFile(f2);
-	fm->closeFile(f3);
+	delete bpm;
+	delete fm;
+	system("rm testfs1 testfs2");
 	//程序结束前可以调用BufPageManager的某个函数将缓存中的内容写回
 	//具体的函数大家可以看看ppt或者程序的注释
 	return 0;
