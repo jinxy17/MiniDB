@@ -27,35 +27,38 @@ struct Rec {
 };
 
 
-int main() {
+int main(int argc, char **argv) {
+	if (argc != 2) {
+		cerr << "Usage: " << argv[0] << " RecFile\n";
+		return 1;
+	}
 	MyBitMap::initConst();   //新加的初始化
 	FileManager* fm = new FileManager();
 	BufPageManager* bpm = new BufPageManager(fm);
-	fm->createFile("testrm"); //新建文件
 	int fileID;
-	fm->openFile("testrm", fileID); //打开文件，fileID是返回的文件id
-	RecManager * rm = new RecManager(bpm, fileID, sizeof(Rec), true);
-
-	cout << sizeof(Rec) << endl;
-	puts("inserting data");
-	for (int i = 1; i <= 11; i++) {
-		int page, slot;
-		unsigned int id;
-		Rec *d = new Rec;
-		d->b1 = 13;
-		strcpy(d->b2, "HELO");
-		strcpy(d->b3, ("JINXY" + to_string(i)).c_str());
-		rm->insertRec((BufType)d, id);
-		page = id >> 16;
-		slot = id << 16 >> 16;
-		cout << "insert: page=" << page << " slot=" << slot << " content=" << (char *)d->b2 << (char *)d->b3 << endl;
+	fm->openFile(argv[1], fileID); //打开文件，fileID是返回的文件id
+	RecManager * rm = new RecManager(bpm, fileID, 0, false);
+	rm->debug();
+	RecManager::Iterator * iter = new RecManager::Iterator(rm);
+	BufType data;
+	unsigned int id;
+	while (iter->next(data, id)) {
+		int pageID = id >> 16;
+		int slotID = (id << 16 >> 16);
+		cout << "entry:";
+		for (int i = 0; i < 36; i++) {
+			if (*((char *)data + i) < 32 || *((char *)data + i) > 126) 
+				cout << "*";
+			else
+				cout << *((char *)data + i);
+		}
+		cout << endl;
 	}
-
+	delete iter;
 	delete rm;
 	fm->closeFile(fileID);
 	delete bpm;
 	delete fm;
-	puts("test completed");
 	
 	return 0;
 }

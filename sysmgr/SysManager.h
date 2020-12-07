@@ -17,8 +17,8 @@ struct AttrInfo {
 	bool notNull;
 	bool primary;
 	BufType defaultValue;
-	string reference;
-	string foreignKeyName;
+	string reference; // table to be referenced
+	string foreignKeyName; // attr to be referenced, must be primary
 	bool haveIndex;
 	int offset; // 4 bytes, completed by SM
 };
@@ -51,10 +51,10 @@ public:
 	void DropIndex(const string tableName, const string attr);
 	void AddPrimaryKey(const string tableName, const vector<string> attrs);
 	void DropPrimaryKey(const string tableName);
-	// void AddForeignKey(const string tableName, vector<string> attrs, const string refName, vector<string> foreigns);
-	// void DropForeignKey(const string tableName, string refName);
-	// void AddColumn(const string tableName, AttrInfo attr);
-	// void DropColumn(const string tableName, string attrName);
+	void AddForeignKey(const string tableName, const vector<string> attrs, const string refName, const vector<string> foreigns);
+	void DropForeignKey(const string tableName, string refName);
+	void AddColumn(const string tableName, AttrInfo attr);
+	void DropColumn(const string tableName, string attrName);
 	
 	bool _checkForeignKeyOnTable(int tableID);
 	int _fromNameToID(const string tableName);

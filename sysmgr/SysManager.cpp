@@ -269,6 +269,8 @@ void SysManager::CreateTable(TableInfo* table) {
 	fileManager->createFile(table->tableName.c_str());
 	int fileID;
 	fileManager->openFile(table->tableName.c_str(), fileID);
+	RecManager * rm = new RecManager(bufPageManager, fileID, recordSize, true);
+	delete rm;
 	// cout << table->tableName << ": " << fileID << endl;
 	_tableFileID[table->tableName] = fileID;
 	if (_tables[_tableNum].primary.size() != 0) {
@@ -305,7 +307,6 @@ void SysManager::DropTable(const string tableName) {
 }
 
 void SysManager::CreateIndex(const string tableName, const string attr) {
-	cout << "CreateIndex():" << endl;
 	int tableID, attrID;
 	tableID = _fromNameToID(tableName);
 	if (tableID == -1) {
@@ -477,273 +478,296 @@ void SysManager::DropPrimaryKey(const string tableName) {
 	system((string("rm ") + tableName + string(".primary")).c_str());
 }
 
-// void SysManager::AddForeignKey(const string tableName, vector<string> attrs, const string refName, vector<string> foreigns) {
-// 	int tableID = _fromNameToID(tableName);
-// 	if (tableID == -1) {
-// 		fprintf(stderr, "Error: invalid table!\n");
-// 		return;
-// 	}
-// 	int refID = _fromNameToID(refName);
-// 	if (refID == -1) {
-// 		fprintf(stderr, "Error: invalid reference table!\n");
-// 		return;
-// 	}
-// 	if (attrs.size() != foreigns.size() || foreigns.size() != _tables[refID].primary.size()) {
-// 		fprintf(stderr, "Error: should cover all primary keys!\n");
-// 		return;
-// 	}
-// 	if (_tables[refID].foreignSet.find(tableName) != _tables[refID].foreignSet.end()) {
-// 		fprintf(stderr, "Error: foreign keys already exists!\n");
-// 		return;
-// 	}
-// 	vector<int> attrIDs, foreignIDs;
-// 	int keyNum = _tables[refID].primary.size();
-// 	/*for (int i = 0; i < keyNum; i++) {
-// 		cout << _tables[refID].primary[i] << endl;
-// 	}*/
-// 	for (int i = 0; i < keyNum; i++) {
-// 		attrIDs.push_back(_fromNameToID(attrs[i], tableID));
-// 		foreignIDs.push_back(_fromNameToID(foreigns[i], refID));
-// 		//cout << attrIDs[i] << " " << foreignIDs[i] << endl;
-// 		if (attrIDs[i] == -1 || foreignIDs[i] == -1) {
-// 			fprintf(stderr, "Error: invalid columns!\n");
-// 			return;
-// 		}
-// 		if (!_tables[tableID].attrs[attrIDs[i]].notNull) {
-// 			fprintf(stderr, "Error: foreign keys must be NOT-NULL!\n");
-// 			return;
-// 		}
-// 	}
-// 	int fileID = _tableFileID[tableName];
-// 	RM_FileHandle *filehandle = new RM_FileHandle(fileManager, bufPageManager, fileID);
-// 	RM_FileScan *filescan = new RM_FileScan(fileManager, bufPageManager);
-// 	bool scanNotEnd = filescan->OpenScan(filehandle);
-// 	int indexID;
-// 	_ixm->OpenIndex(refName.c_str(), "primary", indexID);
-// 	IX_IndexHandle *indexhandle = new IX_IndexHandle(fileManager, bufPageManager, indexID);
-// 	int recordSize = _tables[tableID].recordSize;
-// 	BufType data = new unsigned int[recordSize >> 2];
-// 	int pageID, slotID;
-// 	int refSize = _tables[refID].primarySize;
-// 	BufType refData = new unsigned int[refSize >> 2];
-// 	//cout << keyNum << endl;
-// 	while (scanNotEnd) {
-// 		scanNotEnd = filescan->GetNextRecord(pageID, slotID, data);
-// 		int pos = 0;
-// 		for (int i = 0; i < _tables[refID].primary.size(); i++) {
-// 			string primaryName = _tables[refID].attrs[_tables[refID].primary[i]].attrName;
-// 			int primaryID = _tables[refID].primary[i];
-// 			//cout << primaryName << " " << primaryID << endl;
-// 			int attr = -1;
-// 			for (int j = 0; j < keyNum; j++) if (foreignIDs[j] == primaryID) {
-// 				attr = attrIDs[j]; break;
-// 			}
-// 			//cout << _tables[tableID].attrs[attr].attrName << endl;
-// 			memcpy(refData + pos, data + _tables[tableID].attrs[attr].offset, _tables[tableID].attrs[attr].attrLength);
-// 			pos += (_tables[tableID].attrs[attr].attrLength >> 2);
-// 		}
-// 		bool check = indexhandle->CheckEntry(refData);
-// 		if (!check) {
-// 			//cout << (char*)refData << endl;
-// 			fprintf(stderr, "Error: some foreign keys are not in the reference table!\n");
-// 			delete [] refData;
-// 			delete [] data;
-// 			_ixm->CloseIndex(indexID);
-// 			delete indexhandle, filescan, filehandle;
-// 			return;
-// 		}
-// 	}
-// 	//cout << "finish" << endl;
-// 	for (int i = 0; i < attrIDs.size(); i++) {
-// 		_tables[tableID].attrs[attrIDs[i]].reference = refName;
-// 		_tables[tableID].attrs[attrIDs[i]].foreignKeyName = _tables[refID].attrs[foreignIDs[i]].attrName;
-// 	}
-// 	_tables[refID].foreignSet.insert(tableName);
-// 	_tables[refID].foreign.push_back(tableName);
-// 	delete [] refData;
-// 	delete [] data;
-// 	_ixm->CloseIndex(indexID);
-// 	delete indexhandle, filescan, filehandle;
-// }
+void SysManager::AddForeignKey(const string tableName, const vector<string> attrs, const string refName, const vector<string> foreigns) {
+	int tableID = _fromNameToID(tableName);
+	if (tableID == -1) {
+		fprintf(stderr, "Error: invalid table!\n");
+		return;
+	}
+	int refID = _fromNameToID(refName);
+	if (refID == -1) {
+		fprintf(stderr, "Error: invalid reference table!\n");
+		return;
+	}
+	if (attrs.size() != foreigns.size() || foreigns.size() != _tables[refID].primary.size()) {
+		fprintf(stderr, "Error: should cover all primary keys!\n");
+		return;
+	}
+	if (_tables[refID].foreignSet.find(tableName) != _tables[refID].foreignSet.end()) {
+		fprintf(stderr, "Error: foreign keys already exists!\n");
+		return;
+	}
+	vector<int> attrIDs, foreignIDs;
+	int keyNum = _tables[refID].primary.size();
+	/*for (int i = 0; i < keyNum; i++) {
+		cout << _tables[refID].primary[i] << endl;
+	}*/
+	for (int i = 0; i < keyNum; i++) {
+		attrIDs.push_back(_fromNameToID(attrs[i], tableID));
+		foreignIDs.push_back(_fromNameToID(foreigns[i], refID));
+		cout << attrIDs[i] << " " << foreignIDs[i] << endl;
+		if (attrIDs[i] == -1 || foreignIDs[i] == -1) {
+			fprintf(stderr, "Error: invalid columns!\n");
+			return;
+		}
+		if (!_tables[tableID].attrs[attrIDs[i]].notNull) {
+			fprintf(stderr, "Error: foreign keys must be NOT-NULL!\n");
+			return;
+		}
+	}
+	int fileID = _tableFileID[tableName];
+	int recordSize = _tables[tableID].recordSize;
+	int refSize = _tables[refID].primarySize;
+	RecManager * rm = new RecManager(bufPageManager, fileID, recordSize, false);
+	RecManager::Iterator * iter = new RecManager::Iterator(rm);
+	int indexID;
+	_ixm->OpenIndex((refName + ".primary").c_str(), indexID);
+	SIndexManager * sixm = new SIndexManager(bufPageManager, indexID);
+	BufType data;
+	BufType refData = new unsigned int[refSize >> 2];
+	unsigned int id;
+	while (iter->next(data, id)) {
+		int pageID = id >> 16;
+		int slotID = (id << 16 >> 16);
+		int pos = 0;
+		for (int i = 0; i < _tables[refID].primary.size(); i++) {
+			string primaryName = _tables[refID].attrs[_tables[refID].primary[i]].attrName;
+			int primaryID = _tables[refID].primary[i];
+			//cout << primaryName << " " << primaryID << endl;
+			int attr = -1;
+			for (int j = 0; j < keyNum; j++) if (foreignIDs[j] == primaryID) {
+				attr = attrIDs[j]; break;
+			}
+			//cout << _tables[tableID].attrs[attr].attrName << endl;
+			memcpy(refData + pos, data + _tables[tableID].attrs[attr].offset, _tables[tableID].attrs[attr].attrLength);
+			pos += (_tables[tableID].attrs[attr].attrLength >> 2);
+		}
+		// debug
+		for (int k = 0; k < 32; k++) {
+			char cc = *((char *)refData + k);
+			if (cc >= 32 && cc <= 126) cout << cc;
+			else cout << "*";
+		}
+		cout << endl;
+		bool check = sixm->Exists(refData);
+		if (!check) {
+			//cout << (char*)refData << endl;
+			fprintf(stderr, "Error: some foreign keys are not in the reference table!\n");
+			delete [] refData;
+			delete sixm;
+			_ixm->CloseIndex(indexID);
+			delete iter;
+			delete rm;
+			return;
+		}
 
-// void SysManager::DropForeignKey(const string tableName, string refName) {
-// 	int tableID = _fromNameToID(tableName);
-// 	if (tableID == -1) {
-// 		fprintf(stderr, "Error: invalid table!\n");
-// 		return;
-// 	}
-// 	int refID = _fromNameToID(refName);
-// 	if (refID == -1) {
-// 		fprintf(stderr, "Error: invalid reference table!\n");
-// 		return;
-// 	}
-// 	if (_tables[refID].foreignSet.find(tableName) == _tables[refID].foreignSet.end()) {
-// 		fprintf(stderr, "Error: table does not have the foreign keys!\n");
-// 		return;
-// 	}
-// 	_tables[refID].foreignSet.erase(tableName);
-// 	for (int i = 0; i < _tables[refID].foreign.size(); i++) if (_tables[refID].foreign[i] == tableName) {
-// 		_tables[refID].foreign.erase(_tables[refID].foreign.begin() + i);
-// 		break;
-// 	}
-// 	for (int i = 0; i < _tables[tableID].attrNum; i++) if (_tables[tableID].attrs[i].reference == refName) {
-// 		_tables[tableID].attrs[i].reference = "";
-// 		_tables[tableID].attrs[i].foreignKeyName = "";
-// 	}
-// }
+	}
+	delete [] refData;
+	delete sixm;
+	_ixm->CloseIndex(indexID);
+	delete iter;
+	delete rm;
 
-// void SysManager::AddColumn(const string tableName, AttrInfo attr) {
-// 	int tableID = _fromNameToID(tableName);
-// 	if (tableID == -1) {
-// 		fprintf(stderr, "Error: invalid table!\n");
-// 		return;
-// 	}
-// 	attr.haveIndex = false;
-// 	attr.notNull = true;
-// 	attr.primary = false;
-// 	attr.reference = attr.foreignKeyName = "";
-// 	if (attr.attrType == INT) {
-// 		attr.attrLength = 4;
-// 	} else if (attr.attrType == FLOAT) {
-// 		attr.attrLength = 8;
-// 	}
-// 	while (attr.attrLength % 4 != 0) attr.attrLength++;
-// 	int recordSize = _tables[tableID].recordSize;
-// 	attr.offset = recordSize >> 2;
-// 	int newRecordSize = recordSize + attr.attrLength;
-// 	system(("rm " + tableName + ".*").c_str());
-// 	_rmm->CreateFile((tableName + ".backup.temp").c_str(), newRecordSize);
-// 	int fileID = _tableFileID[tableName];
-// 	int newFileID;
-// 	_rmm->OpenFile((tableName + ".backup.temp").c_str(), newFileID);
-// 	RM_FileHandle *filehandle = new RM_FileHandle(fileManager, bufPageManager, fileID);
-// 	RM_FileHandle *newfilehandle = new RM_FileHandle(fileManager, bufPageManager, newFileID);
-// 	RM_FileScan *filescan = new RM_FileScan(fileManager, bufPageManager);
-// 	bool hasNext = filescan->OpenScan(filehandle);
-// 	BufType data = new unsigned int[newRecordSize >> 2];
-// 	int attrNum = _tables[tableID].attrNum;
-// 	while (hasNext) {
-// 		int pageID, slotID;
-// 		hasNext = filescan->GetNextRecord(pageID, slotID, data);
-// 		unsigned long long *bitmap = (unsigned long long*)data;
-// 		bitmap[0] |= (1ull << attrNum);
-// 		memcpy((char*)data + recordSize, attr.defaultValue, attr.attrLength);
-// 		newfilehandle->InsertRec(pageID, slotID, data);
-// 	}
-// 	delete [] data;
-// 	delete newfilehandle;
-// 	_rmm->CloseFile(newFileID);
-// 	delete filescan, filehandle;
-// 	_rmm->CloseFile(fileID);
-// 	system(("rm " + tableName).c_str());
-// 	system(("mv " + tableName + ".backup.temp " + tableName).c_str());
-// 	_rmm->OpenFile(tableName.c_str(), newFileID);
-// 	_tableFileID[tableName] = newFileID;
-// 	_tables[tableID].attrNum++;
-// 	_tables[tableID].recordSize = newRecordSize;
-// 	_tables[tableID].attrs.push_back(attr);
-// 	vector<string> attrs;
-// 	for (int i = 0; i < _tables[tableID].attrNum; i++) if (_tables[tableID].attrs[i].haveIndex) {
-// 		attrs.clear();
-// 		attrs.push_back(_tables[tableID].attrs[i].attrName);
-// 		_tables[tableID].attrs[i].haveIndex = false;
-// 		CreateIndex(tableName, attrs);
-// 	}
-// 	if (_tables[tableID].primary.size() != 0) {
-// 		attrs.clear();
-// 		for (int i = 0; i < _tables[tableID].primary.size(); i++) {
-// 			attrs.push_back(_tables[tableID].attrs[_tables[tableID].primary[i]].attrName);
-// 		}
-// 		_tables[tableID].primary.clear();
-// 		_tables[tableID].primarySize = 0;
-// 		AddPrimaryKey(tableName, attrs);
-// 	}
-// }
+	for (int i = 0; i < attrIDs.size(); i++) {
+		_tables[tableID].attrs[attrIDs[i]].reference = refName;
+		_tables[tableID].attrs[attrIDs[i]].foreignKeyName = _tables[refID].attrs[foreignIDs[i]].attrName;
+	}
+	_tables[refID].foreignSet.insert(tableName);
+	_tables[refID].foreign.push_back(tableName);
 
-// void SysManager::DropColumn(const string tableName, string attrName) {
-// 	int tableID = _fromNameToID(tableName);
-// 	if (tableID == -1) {
-// 		fprintf(stderr, "Error: invalid table!\n");
-// 		return;
-// 	}
-// 	int attrID = _fromNameToID(attrName, tableID);
-// 	if (attrID == -1) {
-// 		fprintf(stderr, "Error: invalid column!\n");
-// 		return;
-// 	}
-// 	if (_tables[tableID].attrs[attrID].primary || _tables[tableID].attrs[attrID].reference != "") {
-// 		fprintf(stderr, "Error: cannot drop primary keys or foreign keys!\n");
-// 		return;
-// 	}
-// 	int recordSize = _tables[tableID].recordSize;
-// 	int newRecordSize = recordSize - _tables[tableID].attrs[attrID].attrLength;
-// 	system(("rm " + tableName + ".*").c_str());
-// 	_rmm->CreateFile((tableName + ".backup.temp").c_str(), newRecordSize);
-// 	int fileID = _tableFileID[tableName];
-// 	int newFileID;
-// 	_rmm->OpenFile((tableName + ".backup.temp").c_str(), newFileID);
-// 	RM_FileHandle *filehandle = new RM_FileHandle(fileManager, bufPageManager, fileID);
-// 	RM_FileHandle *newfilehandle = new RM_FileHandle(fileManager, bufPageManager, newFileID);
-// 	RM_FileScan *filescan = new RM_FileScan(fileManager, bufPageManager);
-// 	bool hasNext = filescan->OpenScan(filehandle);
-// 	BufType data = new unsigned int[recordSize >> 2];
-// 	int attrNum = _tables[tableID].attrNum;
-// 	int pos =_tables[tableID].attrs[attrID].offset;
-// 	int len = _tables[tableID].attrs[attrID].attrLength >> 2;
-// 	//cout << pos << " " << len << endl;
-// 	for (int i = attrID + 1; i < attrNum; i++) {
-// 		_tables[tableID].attrs[i].offset -= len;
-// 	}
-// 	while (hasNext) {
-// 		int pageID, slotID;
-// 		hasNext = filescan->GetNextRecord(pageID, slotID, data);
-// 		unsigned long long *bitmap = (unsigned long long*)data;
-// 		//cout << (char*)(data + pos) << endl;
-// 		for (int i = pos; i < (newRecordSize >> 2); i++) {
-// 			data[i] = data[i + len];
-// 		}
-// 		//cout << (char*)(data + pos) << endl;
-// 		//cout << bitmap[0] << ' ';
-// 		for (int i = attrID; i < attrNum - 1; i++) {
-// 			if (bitmap[0] & (1ull << (i + 1))) {
-// 				bitmap[0] |= (1ull << i);
-// 			} else {
-// 				bitmap[0] &= ~(1ull << i);
-// 			}
-// 		}
-// 		bitmap[0] &= ~(1ull << (attrNum - 1));
-// 		//cout << bitmap[0] << endl;
-// 		newfilehandle->InsertRec(pageID, slotID, data);
-// 	}
-// 	delete [] data;
-// 	delete newfilehandle;
-// 	_rmm->CloseFile(newFileID);
-// 	delete filescan, filehandle;
-// 	_rmm->CloseFile(fileID);
-// 	system(("rm " + tableName).c_str());
-// 	system(("mv " + tableName + ".backup.temp " + tableName).c_str());
-// 	_rmm->OpenFile(tableName.c_str(), newFileID);
-// 	_tableFileID[tableName] = newFileID;
-// 	_tables[tableID].attrNum--;
-// 	_tables[tableID].recordSize = newRecordSize;
-// 	_tables[tableID].attrs.erase(_tables[tableID].attrs.begin() + attrID);
-// 	vector<string> attrs;
-// 	for (int i = 0; i < _tables[tableID].attrNum; i++) if (_tables[tableID].attrs[i].haveIndex) {
-// 		attrs.clear();
-// 		attrs.push_back(_tables[tableID].attrs[i].attrName);
-// 		_tables[tableID].attrs[i].haveIndex = false;
-// 		CreateIndex(tableName, attrs);
-// 	}
-// 	if (_tables[tableID].primary.size() != 0) {
-// 		attrs.clear();
-// 		for (int i = 0; i < _tables[tableID].attrNum; i++) if (_tables[tableID].attrs[i].primary) {
-// 			attrs.push_back(_tables[tableID].attrs[i].attrName);
-// 		}
-// 		_tables[tableID].primary.clear();
-// 		_tables[tableID].primarySize = 0;
-// 		AddPrimaryKey(tableName, attrs);
-// 	}
-// }
+}
+
+void SysManager::DropForeignKey(const string tableName, string refName) { // refName is a table
+	int tableID = _fromNameToID(tableName);
+	if (tableID == -1) {
+		fprintf(stderr, "Error: invalid table!\n");
+		return;
+	}
+	int refID = _fromNameToID(refName);
+	if (refID == -1) {
+		fprintf(stderr, "Error: invalid reference table!\n");
+		return;
+	}
+	if (_tables[refID].foreignSet.find(tableName) == _tables[refID].foreignSet.end()) {
+		fprintf(stderr, "Error: table does not have the foreign keys!\n");
+		return;
+	}
+	_tables[refID].foreignSet.erase(tableName);
+	for (int i = 0; i < _tables[refID].foreign.size(); i++) if (_tables[refID].foreign[i] == tableName) {
+		_tables[refID].foreign.erase(_tables[refID].foreign.begin() + i);
+		break;
+	}
+	for (int i = 0; i < _tables[tableID].attrNum; i++) if (_tables[tableID].attrs[i].reference == refName) {
+		_tables[tableID].attrs[i].reference = "";
+		_tables[tableID].attrs[i].foreignKeyName = "";
+	}
+}
+
+void SysManager::AddColumn(const string tableName, AttrInfo attr) {
+	int tableID = _fromNameToID(tableName);
+	if (tableID == -1) {
+		fprintf(stderr, "Error: invalid table!\n");
+		return;
+	}
+	attr.haveIndex = false;
+	attr.notNull = true;
+	attr.primary = false;
+	attr.reference = attr.foreignKeyName = "";
+	if (attr.attrType == INT) {
+		attr.attrLength = 4;
+	} else if (attr.attrType == FLOAT) {
+		attr.attrLength = 8;
+	}
+	while (attr.attrLength % 4 != 0) attr.attrLength++;
+	if (attr.defaultValue != nullptr) {
+		if (attr.attrType == INT) {
+			attr.defaultValue = (BufType)new int(*(int *)attr.defaultValue);
+		} else if (attr.attrType == STRING) {
+			BufType temp = (BufType)(new char[attr.attrLength]);
+			strcpy((char*)temp, (char*)attr.defaultValue);
+			attr.defaultValue = temp;
+		} else if (attr.attrType == FLOAT) {
+			attr.defaultValue = (BufType)new double(*(double *)attr.defaultValue);
+		}
+	}
+	int recordSize = _tables[tableID].recordSize;
+	attr.offset = recordSize >> 2;
+	int newRecordSize = recordSize + attr.attrLength;
+	system(("rm " + tableName + ".*").c_str()); // delete index (including primary)
+	fileManager->createFile((tableName + ".backup.temp").c_str());
+	int fileID = _tableFileID[tableName];
+	int newFileID;
+	fileManager->openFile((tableName + ".backup.temp").c_str(), newFileID);
+	
+	RecManager * rm = new RecManager(bufPageManager, fileID, recordSize, false);
+	RecManager * newrm = new RecManager(bufPageManager, newFileID, newRecordSize, true);
+	RecManager::Iterator * iter = new RecManager::Iterator(rm);
+	BufType data;
+	unsigned int id;
+	int attrNum = _tables[tableID].attrNum;
+	while (iter->next(data, id)) {
+		int pageID = id >> 16;
+		int slotID = (id << 16 >> 16);
+		unsigned long long *bitmap = (unsigned long long*)data;
+		bitmap[0] |= (1ull << attrNum);
+		BufType newData = new unsigned int[newRecordSize >> 2];
+		memcpy((char*)newData, data, recordSize);
+		memcpy((char*)newData + recordSize, attr.defaultValue, attr.attrLength);
+		newrm->insertRec(newData, id);
+		delete [] newData;
+	}
+	delete iter;
+	delete newrm;
+	delete rm;
+	fileManager->closeFile(newFileID);
+	fileManager->closeFile(fileID);
+	system(("rm " + tableName).c_str());
+	system(("mv " + tableName + ".backup.temp " + tableName).c_str());
+	fileManager->openFile(tableName.c_str(), newFileID);
+	_tableFileID[tableName] = newFileID;
+	_tables[tableID].attrNum++;
+	_tables[tableID].recordSize = newRecordSize;
+	_tables[tableID].attrs.push_back(attr);
+
+	for (int i = 0; i < _tables[tableID].attrNum; i++) if (_tables[tableID].attrs[i].haveIndex) {
+		string attr = _tables[tableID].attrs[i].attrName;
+		_tables[tableID].attrs[i].haveIndex = false;
+		CreateIndex(tableName, attr);
+	}
+	vector<string> attrs;
+	if (_tables[tableID].primary.size() != 0) {
+		attrs.clear();
+		for (int i = 0; i < _tables[tableID].primary.size(); i++) {
+			attrs.push_back(_tables[tableID].attrs[_tables[tableID].primary[i]].attrName);
+		}
+		_tables[tableID].primary.clear();
+		_tables[tableID].primarySize = 0;
+		AddPrimaryKey(tableName, attrs);
+	}
+}
+
+void SysManager::DropColumn(const string tableName, string attrName) {
+	int tableID = _fromNameToID(tableName);
+	if (tableID == -1) {
+		fprintf(stderr, "Error: invalid table!\n");
+		return;
+	}
+	int attrID = _fromNameToID(attrName, tableID);
+	if (attrID == -1) {
+		fprintf(stderr, "Error: invalid column!\n");
+		return;
+	}
+	if (_tables[tableID].attrs[attrID].primary || _tables[tableID].attrs[attrID].reference != "") {
+		fprintf(stderr, "Error: cannot drop primary keys or foreign keys!\n");
+		return;
+	}
+	int recordSize = _tables[tableID].recordSize;
+	int newRecordSize = recordSize - _tables[tableID].attrs[attrID].attrLength;
+	system(("rm " + tableName + ".*").c_str()); // delete index (including primary)
+	fileManager->createFile((tableName + ".backup.temp").c_str());
+	int fileID = _tableFileID[tableName];
+	int newFileID;
+	fileManager->openFile((tableName + ".backup.temp").c_str(), newFileID);
+	
+	RecManager * rm = new RecManager(bufPageManager, fileID, recordSize, false);
+	RecManager * newrm = new RecManager(bufPageManager, newFileID, newRecordSize, true);
+	RecManager::Iterator * iter = new RecManager::Iterator(rm);
+
+	int attrNum = _tables[tableID].attrNum;
+	int pos =_tables[tableID].attrs[attrID].offset;
+	int len = _tables[tableID].attrs[attrID].attrLength >> 2;
+	//cout << pos << " " << len << endl;
+	for (int i = attrID + 1; i < attrNum; i++) {
+		_tables[tableID].attrs[i].offset -= len;
+	}
+	BufType data;
+	unsigned int id;
+	while (iter->next(data, id)) {
+		int pageID = id >> 16;
+		int slotID = (id << 16 >> 16);
+		unsigned long long *bitmap = (unsigned long long*)data;
+		for (int i = pos; i < (newRecordSize >> 2); i++) {
+			data[i] = data[i + len];
+		}
+		for (int i = attrID; i < attrNum - 1; i++) {
+			if (bitmap[0] & (1ull << (i + 1))) {
+				bitmap[0] |= (1ull << i);
+			} else {
+				bitmap[0] &= ~(1ull << i);
+			}
+		}
+		bitmap[0] &= ~(1ull << (attrNum - 1));
+		newrm->insertRec(data, id);
+	}
+	delete iter;
+	delete newrm;
+	delete rm;
+	fileManager->closeFile(newFileID);
+	fileManager->closeFile(fileID);
+
+	system(("rm " + tableName).c_str());
+	system(("mv " + tableName + ".backup.temp " + tableName).c_str());
+	fileManager->openFile(tableName.c_str(), newFileID);
+	_tableFileID[tableName] = newFileID;
+	_tables[tableID].attrNum--;
+	_tables[tableID].recordSize = newRecordSize;
+	_tables[tableID].attrs.erase(_tables[tableID].attrs.begin() + attrID);
+	for (int i = 0; i < _tables[tableID].attrNum; i++) if (_tables[tableID].attrs[i].haveIndex) {
+		string attr = _tables[tableID].attrs[i].attrName;
+		_tables[tableID].attrs[i].haveIndex = false;
+		CreateIndex(tableName, attr);
+	}
+	vector<string> attrs;
+	if (_tables[tableID].primary.size() != 0) {
+		attrs.clear();
+		for (int i = 0; i < _tables[tableID].attrNum; i++) if (_tables[tableID].attrs[i].primary) {
+			attrs.push_back(_tables[tableID].attrs[i].attrName);
+		}
+		_tables[tableID].primary.clear();
+		_tables[tableID].primarySize = 0;
+		AddPrimaryKey(tableName, attrs);
+	}
+}
 
 bool SysManager::_checkForeignKeyOnTable(int tableID) {
 	string tableName = _tables[tableID].tableName;
