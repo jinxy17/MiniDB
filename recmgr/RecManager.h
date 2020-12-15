@@ -25,8 +25,7 @@ private:
 	int * recNum; // #recs
 	int * pageNum; // #pages, including page 0
 	bitset<DATA_SIZE*8> * bmPage; // bitmap for free pages, including page 0
-	
-	
+		
 public:
 	RecManager(BufPageManager * bpm, int fileID, int recSize, bool reset) {
 		this->bpm = bpm;
@@ -84,6 +83,7 @@ public:
 		bpm->markDirty(idxPage);
 		bpm->markDirty(idxRec);
 		id = (curPage << ID_SEGM) + curRec;
+		cout<<"recNum = "<<*recNum<<endl;
 	}
 	void deleteRec(unsigned int id) {
 		*recNum -= 1;

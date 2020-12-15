@@ -103,7 +103,7 @@ void SIndexManager::readNode(BPlusNode *node, int id)
     //留下缓存访问记录
     bpm->access(node->pageID);
     return;
-}
+}   
 
 bool SIndexManager::insertIx(void *key, int page, int offset)
 {
