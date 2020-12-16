@@ -143,11 +143,11 @@ int main(int argc, char **argv) {
 				vector<string> attrs;
 				while (1) {
 					string attrName = readIdentifier();
-					if (attrName == "") break;
+					if (attrName == "endidx") break;
 					attrs.push_back(attrName);
 				}
 				// 只处理单列索引
-				if(attrs.size() == 1)
+				if(attrs.size() >= 1)
 					smm->CreateIndex(tableName, attrs[0]);
 			} else if (cur == "table") {
 				string tableName = readIdentifier();
@@ -661,6 +661,7 @@ int main(int argc, char **argv) {
 					AttrInfo attr;
 					attr.attrName = cur;
 					string attrType = readIdentifier();
+					printf("after attrType\n");
 					if (attrType == "int") {
 						attr.attrType = INT;
 					} else if (attrType == "float") {
@@ -678,6 +679,7 @@ int main(int argc, char **argv) {
 					if (cur != "null") continue;
 					cur = readIdentifier();
 					if (cur != "default") continue;
+					printf("after default\n");
 					string modifier;
 					if (attrType == "int") {
 						modifier = readIdentifier();

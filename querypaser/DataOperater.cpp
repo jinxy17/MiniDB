@@ -113,10 +113,10 @@ void DataOperater::Insert(const string tableName, vector<BufType> values, vector
 		primaryData = _smm->_getPrimaryKey(tableID, data);
 		int indexFileID;
 		_ixm->OpenIndex((tableName + ".primary").c_str(), indexFileID);
-		SIndexManager *indexhandle = new SIndexManager(bufPageManager, indexFileID);
-		bool check = indexhandle->Exists(primaryData);
+		SIndexManager *sindexhandle = new SIndexManager(bufPageManager, indexFileID);
+		bool check = sindexhandle->Exists(primaryData);
+		delete sindexhandle;
 		_ixm->CloseIndex(indexFileID);
-		delete indexhandle;
 		if (check) {
 			fprintf(stderr, "Error: repetitive primary keys!\n");
 			delete [] data;
@@ -154,10 +154,10 @@ void DataOperater::Insert(const string tableName, vector<BufType> values, vector
 		}
 		int indexFileID;
 		_ixm->OpenIndex((refName + ".primary").c_str(), indexFileID);
-		SIndexManager *indexhandle = new SIndexManager(bufPageManager, indexFileID);
-		bool check = indexhandle->Exists(refData);
+		SIndexManager *sindexhandle = new SIndexManager(bufPageManager, indexFileID);
+		bool check = sindexhandle->Exists(refData);
+		delete sindexhandle;
 		_ixm->CloseIndex(indexFileID);
-		delete indexhandle;
 		delete [] refData;
 		if (!check) {
 			fprintf(stderr, "Error: invalid foreign keys!\n");
@@ -176,12 +176,12 @@ void DataOperater::Insert(const string tableName, vector<BufType> values, vector
 	if (primary_size != 0) {
 		int indexFileID;
 		_ixm->OpenIndex((tableName + ".primary").c_str(), indexFileID);
-		SIndexManager *indexhandle = new SIndexManager(bufPageManager, indexFileID);
+		SIndexManager *sindexhandle = new SIndexManager(bufPageManager, indexFileID);
 		int pageID = recID >> ID_SEGM;
 		int slotID = recID - (pageID << ID_SEGM);
-		indexhandle->insertIx(primaryData, pageID, slotID);
+		sindexhandle->insertIx(primaryData, pageID, slotID);
+		delete sindexhandle;
 		_ixm->CloseIndex(indexFileID);
-		delete indexhandle;
 		delete [] primaryData;
 	}
 	for (int i = 0; i < _smm->_tables[tableID].attrNum; i++) {
@@ -189,12 +189,12 @@ void DataOperater::Insert(const string tableName, vector<BufType> values, vector
 			BufType attrData = data + attrsinfos[i].offset;
 			int indexFileID;
 			_ixm->OpenIndex((tableName + "." + attrsinfos[i].attrName).c_str(), indexFileID);
-			SIndexManager *indexhandle = new SIndexManager(bufPageManager, indexFileID);
+			SIndexManager *sindexhandle = new SIndexManager(bufPageManager, indexFileID);
 			int pageID = recID >> ID_SEGM;
 			int slotID = recID - (pageID << ID_SEGM);
-			indexhandle->insertIx(attrData, pageID, slotID);
+			sindexhandle->insertIx(attrData, pageID, slotID);
+			delete sindexhandle;
 			_ixm->CloseIndex(indexFileID);
-			delete indexhandle;
 		}
 	}
 	delete [] data;
@@ -303,6 +303,8 @@ void DataOperater::Update(const Assigns assigns, vector<Relation> relations) {
 	int indexAttr = -1, indexRel = -1, indexFileID = -1;
 	SIndexManager *indexscan = nullptr;
 	for (int i = 0; i < relations.size(); i++) {
+		// printf("where列名:%s,是否有索引:%d\n",_smm->_tables[tableID].attrs[attrID1[i]].attrName.c_str(),_smm->_tables[tableID].attrs[attrID1[i]].haveIndex);
+		// 列与列相比较,不能用索引遍历
 		if (attrID2[i] != -1) continue;
 		if (relations[i].op != EQ_OP) continue;
 		if (!_smm->_tables[tableID].attrs[attrID1[i]].haveIndex) continue;
@@ -314,7 +316,8 @@ void DataOperater::Update(const Assigns assigns, vector<Relation> relations) {
 			delete indexscan;
 			_ixm->CloseIndex(indexFileID);
 			delete iter;
-			delete filehandle; 
+			delete filehandle;
+			fprintf(stderr,"Error! Failed to open index1");
 			return;
 		}
 		break;
@@ -326,10 +329,12 @@ void DataOperater::Update(const Assigns assigns, vector<Relation> relations) {
 	while (1) {
 		bool hasNext;
 		// 有索引则用索引查询,否则直接查询
+		// printf("found:%d\n",found);
 		if (found) {
 			hasNext = indexscan->GetNextEntry(pageID, slotID);
-			recID = pageID << 16 + slotID;
-			// printf("使用索引遍历");
+			recID = (pageID << 16) + slotID;
+			//printf("Scan,page:%d,slot:%d\n",pageID,slotID);
+			filehandle->GetRec(data,recID);
 		} else {
 			hasNext = iter->next(data, recID);
 			if (!hasNext) break;
@@ -402,177 +407,15 @@ void DataOperater::Update(const Assigns assigns, vector<Relation> relations) {
 			// printf("before update -- pageID:%d,slotID:%d\n",pageID,slotID);
 			filehandle->updateRec(data,recID);
 		}
+		if(!hasNext) break;
 	}
 	// TODO: delete data会引发内存异常,暂时找不到问题所在
 	// delete [] data;
 	for(int i = 0;i < attrIDs.size();i++){
 		if (indexFileIDs[i] != -1) {
-			_ixm->CloseIndex(indexFileIDs[i]);
 			delete sindexhandles[i];
+			_ixm->CloseIndex(indexFileIDs[i]);
 		}
-	}
-	delete iter;
-	delete filehandle;
-}
-
-//更新数据
-// TODO：添加多个set
-void DataOperater::Update(const Assign assign, vector<Relation> relations) {
-	string tableName = assign.table;
-	string attrName = assign.attr;
-
-	//	有关于表的检查
-	int tableID = _smm->_fromNameToID(tableName);
-	if (tableID == -1) {
-		fprintf(stderr, "Error: such table does not exist!\n");
-		return;
-	}
-	for (int i = 0; i < _smm->_tableNum; i++) if (i != tableID) {
-		if (_smm->_tables[i].foreignSet.find(tableName) != _smm->_tables[i].foreignSet.end()) {
-			fprintf(stderr, "Error: foreign keys on the table!\n");
-			return;
-		}
-	}
-
-	// 有关于主键外键等的各种检查
-	int attrID = _smm->_fromNameToID(assign.attr, tableID);
-	if (attrID == -1) {
-		fprintf(stderr, "Error: such column does not exist!\n");
-		return;
-	}
-	if (_smm->_tables[tableID].attrs[attrID].primary) {
-		fprintf(stderr, "Error: cannot update primary keys!\n");
-		return;
-	}
-	if (_smm->_tables[tableID].attrs[attrID].reference != "") {
-		fprintf(stderr, "Error: cannot update foreign keys!\n");
-		return;
-	}
-	int attrLength = _smm->_tables[tableID].attrs[attrID].attrLength;
-	int attrType = _smm->_tables[tableID].attrs[attrID].attrType;
-	if (assign.value == nullptr && _smm->_tables[tableID].attrs[attrID].notNull) {
-		fprintf(stderr, "Error: set NOT-NULL columns to be null!\n");
-		return;
-	}
-
-	int indexFileID = -1;
-	SIndexManager *sindexhandle;
-	int recordSize = _smm->_tables[tableID].recordSize;
-	int offset = _smm->_tables[tableID].attrs[attrID].offset;
-	if (_smm->_tables[tableID].attrs[attrID].haveIndex) {
-		_ixm->OpenIndex((tableName + "." + attrName).c_str(), indexFileID);
-		sindexhandle = new SIndexManager(bufPageManager, indexFileID);
-	}
-	RecManager *filehandle = new RecManager(bufPageManager, _smm->_tableFileID[tableName], 0, false);
-	RecManager::Iterator * iter = new RecManager::Iterator(filehandle);
-	
-	vector<int> attrID1, attrID2;
-	for (int i = 0; i < relations.size(); i++) {
-		int attr = _smm->_fromNameToID(relations[i].attr1, tableID);
-		if (attr == -1) {
-			delete iter;
-			delete filehandle;
-			fprintf(stderr, "Error: invalid columns!\n");
-			return;
-		}
-		attrID1.push_back(attr);
-		if (relations[i].data != nullptr) {
-			attrID2.push_back(-1);
-			continue;
-		}
-		attr = _smm->_fromNameToID(relations[i].attr2, tableID);
-		if (attr == -1) {
-			delete iter;
-			delete filehandle;
-			fprintf(stderr, "Error: invalid columns!\n");
-			return;
-		}
-		attrID2.push_back(attr);
-		if (_smm->_tables[tableID].attrs[attrID1[i]].attrType != _smm->_tables[tableID].attrs[attrID2[i]].attrType) {
-			delete iter;
-			delete filehandle;
-			fprintf(stderr, "Error: invalid comparison!\n");
-			return;
-		}
-	}
-
-	unsigned int recID;
-	BufType data = new unsigned int[recordSize >> 2];
-	while (1) {
-		bool hasNext = iter->next(data, recID);
-		if (!hasNext) break;
-		int pageID = recID >> 16;
-		int slotID = (recID << 16 >> 16);
-
-		bool ok = true;
-		// 用于设置Null标记
-		unsigned long long *bitmap = (unsigned long long*)data;
-		for (int i = 0; i < relations.size(); i++) {
-			BufType data1 = data + _smm->_tables[tableID].attrs[attrID1[i]].offset;
-			BufType data2 = relations[i].data;
-			if (data2 == nullptr) {
-				data2 = data + _smm->_tables[tableID].attrs[attrID2[i]].offset;
-			}
-			if (relations[i].op == IS_NULL) {
-				//cout << (bitmap[0] & (1ull << attrID1[i])) << endl;
-				if ((bitmap[0] & (1ull << attrID1[i])) == 0) continue;
-				else {
-					ok = false;
-					break;
-				}
-			}
-			if (relations[i].op == IS_NOT_NULL) {
-				//cout << (bitmap[0] & (1ull << attrID1[i])) << endl;
-				if ((bitmap[0] & (1ull << attrID1[i])) != 0) continue;
-				else {
-					ok = false;
-					break;
-				}
-			}
-			if ((bitmap[0] & (1ull << attrID1[i])) == 0) {
-				ok = false; break;
-			}
-			if ((attrID2[i] != -1) && ((bitmap[0] & (1ull << attrID2[i])) == 0)) {
-				ok = false; break;
-			}
-			ok = _compare(data1, data2, relations[i].op, _smm->_tables[tableID].attrs[attrID1[i]].attrType);
-			if (!ok) break;
-		}
-		if (ok) {
-			if (indexFileID != -1) {
-				sindexhandle->deleteIx((void*)(data + offset), pageID, slotID);
-			}
-			fill(data + offset, data + offset + (attrLength >> 2), 0);
-			if (assign.assignnull == false && attrType == STRING) {
-				int strLen = strlen((char*)assign.value);
-				if (strLen >= attrLength) {
-					strLen = attrLength;
-					((char*)assign.value)[strLen - 1] = '\0';
-				}
-				memcpy(data + offset, assign.value, strLen);
-			} else if(assign.assignnull == false){
-				memcpy(data + offset, assign.value, attrLength);
-			}
-			// 原来是null,更新之后不是null
-			if ((bitmap[0] & (1ull << attrID)) == 0 && assign.assignnull == false){
-				bitmap[0] |= 1ull << attrID;
-			}
-			// 原来不是null,更新之后是null
-			else if((bitmap[0] & (1ull << attrID)) != 0 && assign.assignnull){
-				bitmap[0] ^= 1ull << attrID;
-			}
-			// printf("before update -- pageID:%d,slotID:%d\n",pageID,slotID);
-			filehandle->updateRec(data,recID);
-			if (indexFileID != -1) {
-				sindexhandle->insertIx((void*)(data + offset), pageID, slotID);
-			}
-		}
-	}
-	// TODO: delete data会引发内存异常,暂时找不到问题所在
-	// delete [] data;
-	if (indexFileID != -1) {
-		_ixm->CloseIndex(indexFileID);
-		delete sindexhandle;
 	}
 	delete iter;
 	delete filehandle;
@@ -722,6 +565,11 @@ void DataOperater::Select(const string tableName, vector<Relation> relations, ve
 			attrIDs.clear();
 			for (int attrID = 0; attrID < _smm->_tables[tableID].attrNum; attrID++)
 				attrIDs.push_back(attrID);
+			attrNames.clear();
+			for (int attrID = 0; attrID < _smm->_tables[tableID].attrNum; attrID++) {
+				string attrname = _smm->_tables[tableID].attrs[attrID].attrName;
+				attrNames.push_back(attrname);
+			}
 			break;
 		}
 		int attrID = _smm->_fromNameToID(attrNames[i], tableID);
@@ -797,7 +645,9 @@ void DataOperater::Select(const string tableName, vector<Relation> relations, ve
 		// 有索引则用索引查询,否则直接查询
 		if (found) {
 			hasNext = indexscan->GetNextEntry(pageID, slotID);
-			// filehandle->GetRec(pageID, slotID, data);
+			recID = (pageID << 16) + slotID;
+			// printf("Scan,page:%d,slot:%d\n",pageID,slotID);
+			filehandle->GetRec(data,recID);
 		} else {
 			hasNext = iter->next(data, recID);
 			if (!hasNext) break;
@@ -845,6 +695,7 @@ void DataOperater::Select(const string tableName, vector<Relation> relations, ve
 				putchar('|');
 				//cout << " bitmap: " << bitmap[0] << " |";
 				for (int i = 0; i < attrIDs.size(); i++) {
+					printf(" %s ",attrNames[i].c_str());
 					BufType out = data + _smm->_tables[tableID].attrs[attrIDs[i]].offset;
 					//cout << " " << (bitmap[0] & (1ull << attrIDs[i])) << " ";
 					if ((bitmap[0] & (1ull << attrIDs[i])) == 0) {
@@ -863,6 +714,7 @@ void DataOperater::Select(const string tableName, vector<Relation> relations, ve
 				putchar('\n');
 			}
 		}
+		if(!hasNext) break;
 	}
 	// TODO: delete data会引发内存异常,暂时找不到问题所在
 	// delete data;
@@ -1004,6 +856,9 @@ void DataOperater::Select(string tableName1, string tableName2, vector<Relation>
 			bool hasNext2;
 			if (found) {
 				hasNext2 = indexscan->GetNextEntry(pageID, slotID);
+				recID = (pageID << 16) + slotID;
+				//printf("Scan,page:%d,slot:%d\n",pageID,slotID);
+				filehandle2->GetRec(data2,recID);
 				// filehandle2->GetRec(pageID, slotID, data2);
 			} else {
 				hasNext2 = iter2->next(data2, recID);

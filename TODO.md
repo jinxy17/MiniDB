@@ -12,3 +12,5 @@
 6. DATE类型的处理 => 用INT保存?
 7. ~~NULL的处理 => update不能修改null~~
 8. ~~UPDATE需要实现支持多列修改~~
+9. char不能建表 ？
+10. 列应该改为默认NOT NULL

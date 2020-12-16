@@ -83,7 +83,6 @@ public:
 		bpm->markDirty(idxPage);
 		bpm->markDirty(idxRec);
 		id = (curPage << ID_SEGM) + curRec;
-		cout<<"recNum = "<<*recNum<<endl;
 	}
 	void deleteRec(unsigned int id) {
 		*recNum -= 1;
@@ -105,6 +104,17 @@ public:
 		memcpy((unsigned char *)b + DATA_OFFSET + *recSize * curRec, e, *recSize);
 		bpm->access(idxPage);
 		bpm->markDirty(idxRec);
+	}
+	bool GetRec(BufType & e,unsigned int id){
+		int curPage = id >> ID_SEGM;
+		int curRec = id << ID_SEGM >> ID_SEGM;
+		if (curPage >= *this->pageNum) return false;
+		int idxRec;
+		BufType b = bpm->getPage(fileID, curPage, idxRec);
+		e = (BufType)((unsigned char *)b + DATA_OFFSET + *this->recSize * curRec);
+		bpm->access(this->idxPage);
+		bpm->access(idxRec);
+		return true;
 	}
 	void debug() {
 		cout << "recsize:" << *recSize << "\trecPP:" << *recPP << 

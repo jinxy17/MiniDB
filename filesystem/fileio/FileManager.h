@@ -90,7 +90,7 @@ public:
 	 * 返回:操作成功，返回0
 	 */
 	int closeFile(int fileID) {
-		cout << "closeFile() " << fileID << endl;
+		//cout << "closeFile() " << fileID << endl;
 		fm->setBit(fileID, 1);
 		int f = fd[fileID];
 		close(f);
@@ -115,7 +115,7 @@ public:
 	 */
 	bool openFile(const char* name, int& fileID) {
 		fileID = fm->findLeftOne();
-		cout << "openFile() " << name << " " << fileID << endl;
+		// cout << "openFile() " << name << " " << fileID << endl;
 		fm->setBit(fileID, 0);
 		_openFile(name, fileID);
 		if (fileID == -1) {
