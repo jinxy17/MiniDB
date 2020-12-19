@@ -186,3 +186,71 @@ class SysManager {
 	void DropColumn(const string tableName, string attrName);
 };
 ```
+## Checkpoint 4: Query Parser
+
+### Author
+Xiaoyu LI
+
+### Files
+`queryparser/*.h`  
+`queryparser/*.cpp`
+`queryparser/lex.l`
+`queryparser/yacc.y`
+### Class doc
+1. DataOperater是数据处理模块,负责数据的插入,删除,更新以及查询
+```cpp
+class DataOperater {
+public:
+	FileManager *fileManager;
+	BufPageManager *bufPageManager;
+	
+	DataOperater(SysManager *smm, IndexManager *ixm, FileManager *_fileManager, BufPageManager *_bufPageManager);
+	~DataOperater();
+	
+    //插入一条数据
+	void Insert(const string tableName, vector<BufType> values, vector<int> columns,int nullcolumnnub);
+	//更新一条或多条数据
+	void Update(const Assign assign, vector<Relation> relations);
+	void Update(const Assigns assigns, vector<Relation> relations);
+	//删除数据
+	void Delete(const string tableName, vector<Relation> relations);
+	//选择数据
+	void Select(const string tableName, vector<Relation> relations, vector<string> attrNames);
+	void Select(string tableName1, string tableName2, vector<Relation> relations, vector<string> attrNames);
+	// void Load(const string tableName, const string fileName);
+
+	bool _compare(BufType data1, BufType data2, CompOp op, int type);
+};
+```
+2. lex.l,yacc.y以及Stmt共同负责SQL命令的解析,lex.l/yacc.y是flex&yacc文件,Stmt是编译时的语法单元模块,基类是Stmt,派生出对应五种Stmt的子类:
+```cpp
+class Stmt {
+public:
+    enum Type {
+	    SYS_STMT,DB_STMT,TB_STMT,IDX_STMT,ALTER_STMT
+    };
+	Type sttype;
+    Stmt(Type _sttype){
+        sttype = _sttype;
+    };
+    ~Stmt(){};
+};
+```
+3. 在语法分析中生成Stmt之后,通过一个全局的Executer来执行SQL命令;Executer接口如下:
+```cpp
+class Executer {
+public:
+    Executer();
+    ~Executer();
+
+	int execStmt(Stmt* stmt);
+    int init();
+    int exit();
+private:
+	FileManager *fileManager;
+	BufPageManager *bufPageManager;
+	IndexManager *indexManager;
+	SysManager *smm;
+	DataOperater *qlm;
+};
+```
