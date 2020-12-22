@@ -4,7 +4,7 @@
 #include "../recmgr/RecManager.h"
 #include "../idxmgr/IndexManager.h"
 #include "../sysmgr/SysManager.h"
-#include "../querypaser/DataOperater.h"
+#include "../queryparser/DataOperater.h"
 
 #include <algorithm>
 #include <string>
@@ -151,7 +151,8 @@ int main(int argc, char **argv) {
 					smm->CreateIndex(tableName, attrs[0]);
 			} else if (cur == "table") {
 				string tableName = readIdentifier();
-				TableInfo *tableInfo = new TableInfo(); tableInfo->attrNum = tableInfo->recordSize = 0;
+				TableInfo *tableInfo = new TableInfo();
+				tableInfo->attrNum = tableInfo->recordSize = 0;
 				tableInfo->tableName = tableName;
 				while (1) {
 					string attrName = readIdentifier();

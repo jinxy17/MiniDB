@@ -9,6 +9,26 @@
 #include "../sysmgr/SysManager.h"
 using namespace std;
 
+struct DataType {
+    int dtype;
+    int setlength;
+    DataType(int _dtype,int _setlength):dtype(_dtype),setlength(_setlength){};
+};
+
+struct Tcol {
+    string tablename;
+    string colname;
+    Tcol(string _tablename,string _colname):tablename(_tablename),colname(_colname){};
+};
+
+struct Lists{
+    vector<AttrInfo*> attrinfos;
+    vector<BufType> valuelist;
+    vector<vector<BufType>> valuelists;
+    vector<string> namelist;
+    vector<string> collist; 
+};
+
 class Stmt {
 public:
     enum Type {
@@ -65,7 +85,7 @@ public:
     Type tbType;
 
     TableInfo* tableInfo;           // only for CREATE TABLE
-    vector<BufType> datas;          // valueLists
+    vector<vector<BufType>> datas;          // valueLists
     Assigns assigns;                // setClause
     vector<Relation> relations;     // whereClause
     vector<string> attrs, tables;   // selector

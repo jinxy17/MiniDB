@@ -16,31 +16,39 @@ DataOperater::DataOperater(SysManager *smm, IndexManager *ixm, FileManager *_fil
 DataOperater::~DataOperater() {}
 
 //插入一条数据,values为插入数据值,cloumns为对应列号(插入null没有列号),nullcolumnnub为null数据列数
-void DataOperater::Insert(const string tableName, vector<BufType> values, vector<int> columns,int nullcolumnnub) {
+bool DataOperater::Insert(const string tableName, vector<BufType> values, vector<int> columns,int nullcolumnnub) {
+	// printf("Insert into %s ,nullcolnub:%d\n",tableName.c_str(),nullcolumnnub);
+	
 	assert(values.size() == columns.size());
 	int tableID = _smm->_fromNameToID(tableName);
+	if(tableID < 0) {
+		printf("Error: No such table\n");
+		return 0;
+	}
+	// printf("tableID:%d\n",tableID);
 	vector<AttrInfo> attrsinfos = _smm->_tables[tableID].attrs;
 
 	// 非空列数目+空列数 必须等于 列数目
 	int attrNum = columns.size();
 	if (attrNum + nullcolumnnub != _smm->_tables[tableID].attrNum) {
 		fprintf(stderr, "Error: invalid values number!\n");
-		return;
+		return 0;
 	}
 
 	// 1.存在外键,不能直接插入
 	for (int i = 0; i < _smm->_tableNum; i++) if (i != tableID) {
 		if (_smm->_tables[i].foreignSet.find(tableName) != _smm->_tables[i].foreignSet.end()) {
 			fprintf(stderr, "Error: foreign keys on the table!\n");
-			return;
+			return 0;
 		}
 	}
 	vector<string> attrs;
 	for (int i = 0; i < columns.size(); i++) {
 		int attrID = columns[i];
 		attrs.push_back(attrsinfos[attrID].attrName);
+		//printf("col %d:%s ",columns[i],attrsinfos[attrID].attrName.c_str());
 	}
-
+	//printf("\n");
 	
 	BufType data = new unsigned int[_smm->_tables[tableID].recordSize >> 2];
 	unsigned long long *bitmap = (unsigned long long*)data;
@@ -76,7 +84,7 @@ void DataOperater::Insert(const string tableName, vector<BufType> values, vector
 		if (attrID == -1) {
 			fprintf(stderr, "Error: invalid column name!\n");
 			delete [] data;
-			return;
+			return 0;
 		}
 		bitmap[0] |= 1ull << attrID;
 		if (attrsinfos[attrID].attrType == INT) {
@@ -103,7 +111,7 @@ void DataOperater::Insert(const string tableName, vector<BufType> values, vector
 		if (attrsinfos[i].notNull && (bitmap[0] & (1ull << i) == 0)) {
 			fprintf(stderr, "Error: some NOT-NULL columns are null!\n");
 			delete [] data;
-			return;
+			return 0;
 		}
 	}
 	// 若有主键,则需检查主键是否重复
@@ -121,7 +129,7 @@ void DataOperater::Insert(const string tableName, vector<BufType> values, vector
 			fprintf(stderr, "Error: repetitive primary keys!\n");
 			delete [] data;
 			if (primaryData != nullptr) delete [] primaryData;
-			return;
+			return 0;
 		}
 	}
 	// 遍历所有外键
@@ -147,7 +155,7 @@ void DataOperater::Insert(const string tableName, vector<BufType> values, vector
 				delete [] data;
 				if (primaryData != nullptr) delete [] primaryData;
 				delete [] refData;
-				return;
+				return 0;
 			}
 			memcpy(refData + pos, data + attrsinfos[attr].offset, attrsinfos[attr].attrLength);
 			pos += (attrsinfos[attr].attrLength >> 2);
@@ -163,7 +171,7 @@ void DataOperater::Insert(const string tableName, vector<BufType> values, vector
 			fprintf(stderr, "Error: invalid foreign keys!\n");
 			delete [] data;
 			if (primaryData != nullptr) delete [] primaryData;
-			return;
+			return 0;
 		}
 	}
 	unsigned int recID;
@@ -199,6 +207,7 @@ void DataOperater::Insert(const string tableName, vector<BufType> values, vector
 	}
 	delete [] data;
 	delete filehandle;
+	return 1;
 }
 
 void DataOperater::Update(const Assigns assigns, vector<Relation> relations) {
@@ -1006,6 +1015,9 @@ bool DataOperater::_compare(BufType data1, BufType data2, CompOp op, int type) {
 		if (op == LE_OP) return *(double*)data1 <= *(double*)data2;
 		if (op == GE_OP) return *(double*)data1 >= *(double*)data2;
 	}
+	printf("Error Operator in compare\n");
+	assert(1);
+	return false;
 }
 
 // void DataOperater::Load(const string tableName, const string fileName) {

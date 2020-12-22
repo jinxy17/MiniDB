@@ -11,6 +11,7 @@
 #define INT 0
 #define FLOAT 1
 #define STRING 2
+#define DATE 3
 
 enum CompOp {
 	NO_OP, EQ_OP, NE_OP, LT_OP, GT_OP, LE_OP, GE_OP, IS_NULL, IS_NOT_NULL
@@ -48,7 +49,7 @@ public:
 	~DataOperater();
 	
     //插入一条数据
-	void Insert(const string tableName, vector<BufType> values, vector<int> columns,int nullcolumnnub);
+	bool Insert(const string tableName, vector<BufType> values, vector<int> columns,int nullcolumnnub);
 	void Update(const Assign assign, vector<Relation> relations);
 	void Update(const Assigns assigns, vector<Relation> relations);
 	void Delete(const string tableName, vector<Relation> relations);

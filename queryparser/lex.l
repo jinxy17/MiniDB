@@ -4,7 +4,7 @@
 #include <string>
 #include <cstdio>
 #include <cstring>
-#include "Stmt.h"
+#include "../queryparser/Stmt.h"
 #include "y.tab.h"
 char *get_text(const char *text, bool strip = false) {
     int length = strlen(text);
@@ -72,7 +72,7 @@ RENAME          { return RENAME;}
 DESC            { return DESC;}
 INDEX           { return INDEX;}
 AND             { return AND;}
-DATE            { return DATE;}
+DATE            { return KWDATE;}
 FLOAT           { return KWFLOAT;}
 FOREIGN         { return FOREIGN;}
 REFERENCES      { return REFERENCES;}
