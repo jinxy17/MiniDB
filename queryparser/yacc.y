@@ -26,6 +26,7 @@ Executer * executer;
     Tcol* tcol;
     Relation* relation;
     CompOp compop;
+    Assigns* assigns;
 }
 
 // 重复关键字加前缀KW
@@ -57,6 +58,7 @@ Executer * executer;
 %type <tcol> col
 %type <relation> whereClause
 %type <compop> op
+%type <assigns> setClause
 
 %start program
 
@@ -143,10 +145,6 @@ tbStmt:
           stmt->tableInfo->attrNum = stmt->tableInfo->attrs.size();
           executer->execTbStmt(stmt);
           delete stmt;
-          for(int i = 0;i < $5->attrinfos.size();i++) {
-            delete $5->attrinfos[i];
-          }
-          $5->attrinfos.clear();
           delete $5;
        }
     | DROP TABLE tbName
@@ -167,36 +165,42 @@ tbStmt:
           stmt->datas = $5->valuelists;
           executer->execTbStmt(stmt);
           delete stmt;
-          for(int i = 0;i < $5->valuelists.size();i++){
-             $5->valuelists[i].clear();
-          }
-          $5->valuelists.clear();
           delete $5;
        }
     | DELETE FROM tbName WHERE whereClauses
        {
           tbStmt* stmt = new tbStmt(tbStmt::TB_DELETE);
           stmt->tbName = $3;
+          stmt->relations.assign($5->relations.begin(),$5->relations.end());
           executer->execTbStmt(stmt);
           delete stmt;
+          delete $5;
        }
     | UPDATE tbName SET setClause WHERE whereClauses
        {
           tbStmt* stmt = new tbStmt(tbStmt::TB_UPDATE);
           stmt->tbName = $2;
+          stmt->assigns = $4;
+          stmt->assigns->table = $2;
+          stmt->relations.assign($6->relations.begin(),$6->relations.end());
           executer->execTbStmt(stmt);
           delete stmt;
+          delete $4;
+          delete $6;
        }
     | SELECT selector FROM tableList WHERE whereClauses
        {
-          //TODO:三张以上表的连接
+          // TODO:三张以上表的连接
           tbStmt* stmt = new tbStmt(tbStmt::TB_SELECT);
-          printf("cols num:%ld,tables num:%ld,whereclauses num:%ld\n",$2->collist.size(),$4->namelist.size(),$6->relations.size());
+          //printf("select: cols num:%ld,tables num:%ld,whereclauses num:%ld\n",$2->collist.size(),$4->namelist.size(),$6->relations.size());
           stmt->collist.assign($2->collist.begin(),$2->collist.end());
           stmt->tablelist.assign($4->namelist.begin(),$4->namelist.end());
           stmt->relations.assign($6->relations.begin(),$6->relations.end());
           executer->execTbStmt(stmt);
-          // delete stmt;
+          delete stmt;
+          delete $2;
+          delete $4;
+          delete $6;
        }
 	;
 
@@ -403,14 +407,14 @@ valueList:
 value:
       VALUE_INT
        {
-         printf("value int:%d \n",$1);
+         //printf("value int:%d \n",$1);
          int *d = new int;
          *d = $1;
          $$ = new Value(INT,(BufType)d);
        }
 	| VALUE_FLOAT
        {
-          printf("value float:%f \n",$1);
+          //printf("value float:%f \n",$1);
           double *f = new double;
           *f = $1;
 			 $$ = new Value(FLOAT,(BufType)f);
@@ -501,11 +505,25 @@ op: EQ {$$ = CompOp::EQ_OP;}
 setClause: 
       colName EQ value
        {
-
+          $$ = new Assigns();
+          $$->attrs.push_back($1);
+          $$->values.push_back($3);
+          if($3->datatype == DNULL){
+             $$->assignnull.push_back(true);
+          }else{
+             $$->assignnull.push_back(false);
+          }
        }
     | setClause ',' colName EQ value
        {
-
+          $$ = $1;
+          $$->attrs.push_back($3);
+          $$->values.push_back($5);
+          if($5->datatype == DNULL){
+             $$->assignnull.push_back(true);
+          }else{
+             $$->assignnull.push_back(false);
+          }
        }
     ;
 

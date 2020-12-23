@@ -37,6 +37,27 @@ struct Lists{
         collist.clear();
         relations.clear();
     }
+    ~Lists(){
+        for(int i = 0;i < attrinfos.size();i++)
+            delete attrinfos[i];
+        attrinfos.clear();
+        for(int i = 0;i < valuelist.size();i++)
+            delete valuelist[i];
+        valuelist.clear();
+        for(int i = 0;i < valuelists.size();i++){
+            for(int j = 0;j < valuelists[i].size();j++)
+                delete valuelists[i][j];
+            valuelists[i].clear();
+        }
+        valuelists.clear();
+        namelist.clear();
+        for(int i = 0;i < collist.size();i++)
+            delete collist[i];
+        collist.clear();
+        for(int i = 0;i < relations.size();i++)
+            delete relations[i];
+        relations.clear();
+    }
 };
 
 class Stmt {
@@ -96,7 +117,7 @@ public:
 
     TableInfo* tableInfo;           // only for CREATE TABLE
     vector<vector<Value*>> datas;   // valueLists
-    Assigns assigns;                // setClause
+    Assigns* assigns;                // setClause
     vector<Relation*> relations;    // whereClause
     
     vector<Tcol*>   collist;        // selector

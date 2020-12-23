@@ -36,14 +36,15 @@ struct Relation {
 struct Assigns {
 	string table;
 	vector<string> attrs;
-	vector<BufType> values;
+	vector<Value*> values;
+	//在添加了DNULL类型后assignnull实际为冗余成员
 	vector<bool> assignnull;
 };
 
 struct Assign {
 	string table;
 	string attr;
-	BufType value;
+	Value* value;
 	bool assignnull;
 };
 

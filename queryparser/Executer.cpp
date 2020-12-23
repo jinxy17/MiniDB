@@ -195,22 +195,27 @@ void Executer::execTbStmt(tbStmt *stmt)
     }
     case tbStmt::TB_DELETE:
     {
+        //DELETE FROM tb WHERE id >= 3
+        qlm->Delete(stmt->tbName, stmt->relations);
         break;
     }
     case tbStmt::TB_UPDATE:
     {
-        break;
+        //UPDATE tbName SET setClause WHERE whereClauses
+        //UPDATE tb SET id = 1 , score = 51 WHERE id > 3 AND id < 6;
+        qlm->Update(*stmt->assigns, stmt->relations);
+        break; 
     }
     case tbStmt::TB_SELECT:{
+        // TODO:多表SELECT
         // SELECT <selector> FROM <tableList> WHERE <whereClause>
         // SELECT * FROM tb WHERE id > 0 AND score > 1.0;
         // SELECT id FROM tb WHERE id > 0 AND score > 1.0;
-        printf("TBSELECT\n");
         vector<string> attrNames;
         for(int i = 0;i < stmt->collist.size();i++){
             attrNames.push_back(stmt->collist[i]->colname);
         }
-        printf("%ld,%ld\n",attrNames.size(),stmt->collist.size());
+        // printf("%ld,%ld\n",attrNames.size(),stmt->collist.size());
         qlm->Select(stmt->tablelist[0], stmt->relations,attrNames);
         break;
     }

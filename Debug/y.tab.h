@@ -170,8 +170,9 @@ union YYSTYPE
     Tcol* tcol;
     Relation* relation;
     CompOp compop;
+    Assigns* assigns;
 
-#line 175 "y.tab.h"
+#line 176 "y.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
