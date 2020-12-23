@@ -130,7 +130,6 @@ public:
 };
 
 /* TODO: 补全idx和alter */
-
 // idxStmt:
 // CREATE INDEX <idxName> ON <tbName>’ (’< columnList >’) ’
 // DROP INDEX <idxName>

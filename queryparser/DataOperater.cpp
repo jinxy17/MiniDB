@@ -360,6 +360,10 @@ void DataOperater::Update(const Assigns assigns, vector<Relation*> relations) {
 			return;
 		}
 		attrID1.push_back(attr);
+		if (relations[i]->op == CompOp::IS_NULL || relations[i]->op == CompOp::IS_NOT_NULL){
+			attrID2.push_back(-1);
+			continue;
+		}
 		if (relations[i]->value->data != nullptr) {
 			attrID2.push_back(-1);
 			//类型检查与转换
@@ -561,6 +565,10 @@ void DataOperater::Delete(const string tableName, vector<Relation*> relations) {
 			return;
 		}
 		attrID1.push_back(attr);
+		if (relations[i]->op == CompOp::IS_NULL || relations[i]->op == CompOp::IS_NOT_NULL){
+			attrID2.push_back(-1);
+			continue;
+		}
 		if (relations[i]->value->data != nullptr) {
 			attrID2.push_back(-1);
 			//类型检查与转换
@@ -743,6 +751,10 @@ void DataOperater::Select(const string tableName, vector<Relation*> relations, v
 			return;
 		}
 		attrID1.push_back(attr);
+		if (relations[i]->op == CompOp::IS_NULL || relations[i]->op == CompOp::IS_NOT_NULL){
+			attrID2.push_back(-1);
+			continue;
+		}
 		if (relations[i]->value->data != nullptr) {
 			attrID2.push_back(-1);
 			//类型检查与转换
@@ -964,6 +976,10 @@ void DataOperater::Select(string tableName1, string tableName2, vector<Relation*
 			return;
 		}
 		attrID1.push_back(make_pair(tableID, attr));
+		if (relations[i]->op == CompOp::IS_NULL || relations[i]->op == CompOp::IS_NOT_NULL){
+			attrID2.push_back(make_pair(-1, -1));
+			continue;
+		}
 		if (relations[i]->value->data != nullptr) {
 			attrID2.push_back(make_pair(-1, -1));
 			//类型检查与转换

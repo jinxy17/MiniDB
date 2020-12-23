@@ -172,6 +172,7 @@ void Executer::execTbStmt(tbStmt *stmt)
     case tbStmt::TB_INSERT:
     {   
         //INSERT INTO tb VALUES (1,1.5) , (2,1.5) , (3,15.2)
+        //INSERT INTO tb VALUES (NULL,58.6),(5,NULL);
         //INSERT INTO tbName VALUES valueLists
         for(int i = 0;i < stmt->datas.size();i++) {
             vector<Value*> rdata;
@@ -203,6 +204,7 @@ void Executer::execTbStmt(tbStmt *stmt)
     {
         //UPDATE tbName SET setClause WHERE whereClauses
         //UPDATE tb SET id = 1 , score = 51 WHERE id > 3 AND id < 6;
+        //UPDATE tb SET id = 15 , score = 54.5 WHERE id IS NULL;
         qlm->Update(*stmt->assigns, stmt->relations);
         break; 
     }
@@ -211,6 +213,7 @@ void Executer::execTbStmt(tbStmt *stmt)
         // SELECT <selector> FROM <tableList> WHERE <whereClause>
         // SELECT * FROM tb WHERE id > 0 AND score > 1.0;
         // SELECT id FROM tb WHERE id > 0 AND score > 1.0;
+        // SELECT * FROM tb WHERE id IS NULL;
         vector<string> attrNames;
         for(int i = 0;i < stmt->collist.size();i++){
             attrNames.push_back(stmt->collist[i]->colname);
