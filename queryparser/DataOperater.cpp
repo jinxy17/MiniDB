@@ -16,13 +16,13 @@ DataOperater::DataOperater(SysManager *smm, IndexManager *ixm, FileManager *_fil
 DataOperater::~DataOperater() {}
 
 //插入一条数据,values为插入数据值,cloumns为对应列号(插入null没有列号),nullcolumnnub为null数据列数
-bool DataOperater::Insert(const string tableName, vector<BufType> values, vector<int> columns,int nullcolumnnub) {
+bool DataOperater::Insert(const string tableName, vector<Value*> insertvalues, vector<int> columns,int nullcolumnnub) {
 	// printf("Insert into %s ,nullcolnub:%d\n",tableName.c_str(),nullcolumnnub);
 	
-	assert(values.size() == columns.size());
+	assert(insertvalues.size() == columns.size());
 	int tableID = _smm->_fromNameToID(tableName);
-	if(tableID < 0) {
-		printf("Error: No such table\n");
+	if (tableID == -1) {
+		fprintf(stderr, "Error: such table does not exist!\n");
 		return 0;
 	}
 	// printf("tableID:%d\n",tableID);
@@ -43,10 +43,45 @@ bool DataOperater::Insert(const string tableName, vector<BufType> values, vector
 		}
 	}
 	vector<string> attrs;
+	vector<BufType> values;
 	for (int i = 0; i < columns.size(); i++) {
 		int attrID = columns[i];
 		attrs.push_back(attrsinfos[attrID].attrName);
-		//printf("col %d:%s ",columns[i],attrsinfos[attrID].attrName.c_str());
+		//类型检查与转换
+		if(attrsinfos[attrID].attrType == INT || attrsinfos[attrID].attrType == DATE) {
+			if(insertvalues[i]->datatype == INT || insertvalues[i]->datatype == DATE){
+				values.push_back(insertvalues[i]->data);
+			} else if(insertvalues[i]->datatype == FLOAT){
+				double fdata = *(double*)insertvalues[i]->data;
+				int* idata = new int(fdata); 
+				values.push_back((BufType)idata);
+			}else{
+				printf("Error: data type does not fit!\n");
+				return 0;
+			}
+		}else if(attrsinfos[attrID].attrType == FLOAT){
+			if(insertvalues[i]->datatype == INT || insertvalues[i]->datatype == DATE){
+				int idata = *(int*)insertvalues[i]->data;
+				double* fdata = new double(idata); 
+				values.push_back((BufType)fdata);
+			} else if(insertvalues[i]->datatype == FLOAT){
+				values.push_back(insertvalues[i]->data);
+			}else{
+				printf("Error: data type does not fit!\n");
+				return 0;
+			}
+		}else if(attrsinfos[attrID].attrType == STRING){
+		    if(insertvalues[i]->datatype == STRING){
+				values.push_back(insertvalues[i]->data);
+			} else{
+				printf("Error: data type does not fit!\n");
+				return 0;
+			}
+		}else {
+			//经过检查不允许插入NULL值域(实际上目前代码支持插入NULL),所以理论上不可能进入这里
+			assert(1);
+		}
+		
 	}
 	//printf("\n");
 	
@@ -210,7 +245,7 @@ bool DataOperater::Insert(const string tableName, vector<BufType> values, vector
 	return 1;
 }
 
-void DataOperater::Update(const Assigns assigns, vector<Relation> relations) {
+void DataOperater::Update(const Assigns assigns, vector<Relation*> relations) {
 	assert(assigns.attrs.size() == assigns.values.size());
 	assert(assigns.attrs.size() == assigns.assignnull.size());
 	string tableName = assigns.table;
@@ -280,7 +315,7 @@ void DataOperater::Update(const Assigns assigns, vector<Relation> relations) {
 	
 	vector<int> attrID1, attrID2;
 	for (int i = 0; i < relations.size(); i++) {
-		int attr = _smm->_fromNameToID(relations[i].attr1, tableID);
+		int attr = _smm->_fromNameToID(relations[i]->attr1, tableID);
 		if (attr == -1) {
 			delete iter;
 			delete filehandle;
@@ -288,11 +323,45 @@ void DataOperater::Update(const Assigns assigns, vector<Relation> relations) {
 			return;
 		}
 		attrID1.push_back(attr);
-		if (relations[i].data != nullptr) {
+		if (relations[i]->value->data != nullptr) {
 			attrID2.push_back(-1);
+			//int date float类型转换
+			if(_smm->_tables[tableID].attrs[attr].attrType == INT || _smm->_tables[tableID].attrs[attr].attrType == DATE){
+				if(relations[i]->value->datatype == INT || relations[i]->value->datatype == DATE){
+					continue;
+				} else if(relations[i]->value->datatype == FLOAT){
+					double fdata = *(double*)relations[i]->value->data;
+					int* idata = new int(fdata);
+					relations[i]->value->data = (BufType)idata;
+				}else{
+					printf("Error: data type does not fit!\n");
+					return;
+				}
+			}else if(_smm->_tables[tableID].attrs[attr].attrType == FLOAT){
+				if(relations[i]->value->datatype == INT || relations[i]->value->datatype == DATE){
+					int idata = *(int*)relations[i]->value->data;
+					double* fdata = new double(idata); 
+					relations[i]->value->data = (BufType)fdata;
+				} else if(relations[i]->value->datatype == FLOAT){
+					continue;
+				}else{
+					printf("Error: data type does not fit!\n");
+					return;
+				}
+			}else if(_smm->_tables[tableID].attrs[attr].attrType == STRING){
+		    	if(relations[i]->value->datatype == STRING){
+					continue;
+				} else{
+					printf("Error: data type does not fit!\n");
+					return;
+				}
+			}else {
+				//经过检查不允许插入NULL值域(实际上目前代码支持插入NULL),所以理论上不可能进入这里
+				assert(1);
+			}
 			continue;
 		}
-		attr = _smm->_fromNameToID(relations[i].attr2, tableID);
+		attr = _smm->_fromNameToID(relations[i]->attr2, tableID);
 		if (attr == -1) {
 			delete iter;
 			delete filehandle;
@@ -315,13 +384,13 @@ void DataOperater::Update(const Assigns assigns, vector<Relation> relations) {
 		// printf("where列名:%s,是否有索引:%d\n",_smm->_tables[tableID].attrs[attrID1[i]].attrName.c_str(),_smm->_tables[tableID].attrs[attrID1[i]].haveIndex);
 		// 列与列相比较,不能用索引遍历
 		if (attrID2[i] != -1) continue;
-		if (relations[i].op != EQ_OP) continue;
+		if (relations[i]->op != EQ_OP) continue;
 		if (!_smm->_tables[tableID].attrs[attrID1[i]].haveIndex) continue;
 		found = true;
 		indexAttr = attrID1[i]; indexRel = i;
 		_ixm->OpenIndex((tableName + "." + _smm->_tables[tableID].attrs[indexAttr].attrName).c_str(), indexFileID);
 		indexscan = new SIndexManager(bufPageManager, indexFileID);
-		if (!indexscan->OpenScan(relations[i].data, true)) {
+		if (!indexscan->OpenScan(relations[i]->value->data, true)) {
 			delete indexscan;
 			_ixm->CloseIndex(indexFileID);
 			delete iter;
@@ -356,11 +425,11 @@ void DataOperater::Update(const Assigns assigns, vector<Relation> relations) {
 		unsigned long long *bitmap = (unsigned long long*)data;
 		for (int i = 0; i < relations.size(); i++) {
 			BufType data1 = data + _smm->_tables[tableID].attrs[attrID1[i]].offset;
-			BufType data2 = relations[i].data;
+			BufType data2 = relations[i]->value->data;
 			if (data2 == nullptr) {
 				data2 = data + _smm->_tables[tableID].attrs[attrID2[i]].offset;
 			}
-			if (relations[i].op == IS_NULL) {
+			if (relations[i]->op == IS_NULL) {
 				//cout << (bitmap[0] & (1ull << attrID1[i])) << endl;
 				if ((bitmap[0] & (1ull << attrID1[i])) == 0) continue;
 				else {
@@ -368,7 +437,7 @@ void DataOperater::Update(const Assigns assigns, vector<Relation> relations) {
 					break;
 				}
 			}
-			if (relations[i].op == IS_NOT_NULL) {
+			if (relations[i]->op == IS_NOT_NULL) {
 				//cout << (bitmap[0] & (1ull << attrID1[i])) << endl;
 				if ((bitmap[0] & (1ull << attrID1[i])) != 0) continue;
 				else {
@@ -382,7 +451,7 @@ void DataOperater::Update(const Assigns assigns, vector<Relation> relations) {
 			if ((attrID2[i] != -1) && ((bitmap[0] & (1ull << attrID2[i])) == 0)) {
 				ok = false; break;
 			}
-			ok = _compare(data1, data2, relations[i].op, _smm->_tables[tableID].attrs[attrID1[i]].attrType);
+			ok = _compare(data1, data2, relations[i]->op, _smm->_tables[tableID].attrs[attrID1[i]].attrType);
 			if (!ok) break;
 		}
 		if (ok) {
@@ -430,7 +499,7 @@ void DataOperater::Update(const Assigns assigns, vector<Relation> relations) {
 	delete filehandle;
 }
 
-void DataOperater::Delete(const string tableName, vector<Relation> relations) {
+void DataOperater::Delete(const string tableName, vector<Relation*> relations) {
 	int tableID = _smm->_fromNameToID(tableName);
 	if (tableID == -1) {
 		fprintf(stderr, "Error: such table does not exist!\n");
@@ -447,7 +516,7 @@ void DataOperater::Delete(const string tableName, vector<Relation> relations) {
 	
 	vector<int> attrID1, attrID2;
 	for (int i = 0; i < relations.size(); i++) {
-		int attr = _smm->_fromNameToID(relations[i].attr1, tableID);
+		int attr = _smm->_fromNameToID(relations[i]->attr1, tableID);
 		if (attr == -1) {
 			delete iter;
 			delete filehandle;
@@ -455,11 +524,45 @@ void DataOperater::Delete(const string tableName, vector<Relation> relations) {
 			return;
 		}
 		attrID1.push_back(attr);
-		if (relations[i].data != nullptr) {
+		if (relations[i]->value->data != nullptr) {
 			attrID2.push_back(-1);
+			//int date float类型转换
+			if(_smm->_tables[tableID].attrs[attr].attrType == INT || _smm->_tables[tableID].attrs[attr].attrType == DATE){
+				if(relations[i]->value->datatype == INT || relations[i]->value->datatype == DATE){
+					continue;
+				} else if(relations[i]->value->datatype == FLOAT){
+					double fdata = *(double*)relations[i]->value->data;
+					int* idata = new int(fdata);
+					relations[i]->value->data = (BufType)idata;
+				}else{
+					printf("Error: data type does not fit!\n");
+					return;
+				}
+			}else if(_smm->_tables[tableID].attrs[attr].attrType == FLOAT){
+				if(relations[i]->value->datatype == INT || relations[i]->value->datatype == DATE){
+					int idata = *(int*)relations[i]->value->data;
+					double* fdata = new double(idata); 
+					relations[i]->value->data = (BufType)fdata;
+				} else if(relations[i]->value->datatype == FLOAT){
+					continue;
+				}else{
+					printf("Error: data type does not fit!\n");
+					return;
+				}
+			}else if(_smm->_tables[tableID].attrs[attr].attrType == STRING){
+		    	if(relations[i]->value->datatype == STRING){
+					continue;
+				} else{
+					printf("Error: data type does not fit!\n");
+					return;
+				}
+			}else {
+				//经过检查不允许插入NULL值域(实际上目前代码支持插入NULL),所以理论上不可能进入这里
+				assert(1);
+			}
 			continue;
 		}
-		attr = _smm->_fromNameToID(relations[i].attr2, tableID);
+		attr = _smm->_fromNameToID(relations[i]->attr2, tableID);
 		if (attr == -1) {
 			delete iter;
 			delete filehandle;
@@ -503,11 +606,11 @@ void DataOperater::Delete(const string tableName, vector<Relation> relations) {
 		unsigned long long *bitmap = (unsigned long long*)data;
 		for (int i = 0; i < relations.size(); i++) {
 			BufType data1 = data + _smm->_tables[tableID].attrs[attrID1[i]].offset;
-			BufType data2 = relations[i].data;
+			BufType data2 = relations[i]->value->data;
 			if (data2 == nullptr) {
 				data2 = data + _smm->_tables[tableID].attrs[attrID2[i]].offset;
 			}
-			if (relations[i].op == IS_NULL) {
+			if (relations[i]->op == IS_NULL) {
 				//cout << (bitmap[0] & (1ull << attrID1[i])) << endl;
 				if ((bitmap[0] & (1ull << attrID1[i])) == 0) continue;
 				else {
@@ -515,7 +618,7 @@ void DataOperater::Delete(const string tableName, vector<Relation> relations) {
 					break;
 				}
 			}
-			if (relations[i].op == IS_NOT_NULL) {
+			if (relations[i]->op == IS_NOT_NULL) {
 				//cout << (bitmap[0] & (1ull << attrID1[i])) << endl;
 				if ((bitmap[0] & (1ull << attrID1[i])) != 0) continue;
 				else {
@@ -529,7 +632,7 @@ void DataOperater::Delete(const string tableName, vector<Relation> relations) {
 			if ((attrID2[i] != -1) && ((bitmap[0] & (1ull << attrID2[i])) == 0)) {
 				ok = false; break;
 			}
-			ok = _compare(data1, data2, relations[i].op, _smm->_tables[tableID].attrs[attrID1[i]].attrType);
+			ok = _compare(data1, data2, relations[i]->op, _smm->_tables[tableID].attrs[attrID1[i]].attrType);
 			if (!ok) break;
 		}
 		if (ok) {
@@ -560,12 +663,13 @@ void DataOperater::Delete(const string tableName, vector<Relation> relations) {
 	delete filehandle;
 }
 
-void DataOperater::Select(const string tableName, vector<Relation> relations, vector<string> attrNames) {
+void DataOperater::Select(const string tableName, vector<Relation*> relations, vector<string> attrNames) {
 	int tableID = _smm->_fromNameToID(tableName);
 	if (tableID == -1) {
 		fprintf(stderr, "Error: such table does not exist!\n");
 		return;
 	}
+	printf("select from table:%s\n",tableName.c_str());
 	vector<int> attrIDs;
 	for (int i = 0; i < attrNames.size(); i++) {
 		//printf("列名:%s\n",attrNames[i].c_str());
@@ -593,8 +697,8 @@ void DataOperater::Select(const string tableName, vector<Relation> relations, ve
 
 	vector<int> attrID1, attrID2;
 	for (int i = 0; i < relations.size(); i++) {
-		//列名:%s\n",relations[i].attr1.c_str());
-		int attr = _smm->_fromNameToID(relations[i].attr1, tableID);
+		//列名:%s\n",relations[i]->attr1.c_str());
+		int attr = _smm->_fromNameToID(relations[i]->attr1, tableID);
 		if (attr == -1) {
 			delete iter;
 			delete filehandle;
@@ -602,11 +706,45 @@ void DataOperater::Select(const string tableName, vector<Relation> relations, ve
 			return;
 		}
 		attrID1.push_back(attr);
-		if (relations[i].data != nullptr) {
+		if (relations[i]->value->data != nullptr) {
 			attrID2.push_back(-1);
+			//int date float类型转换
+			if(_smm->_tables[tableID].attrs[attr].attrType == INT || _smm->_tables[tableID].attrs[attr].attrType == DATE){
+				if(relations[i]->value->datatype == INT || relations[i]->value->datatype == DATE){
+					continue;
+				} else if(relations[i]->value->datatype == FLOAT){
+					double fdata = *(double*)relations[i]->value->data;
+					int* idata = new int(fdata);
+					relations[i]->value->data = (BufType)idata;
+				}else{
+					printf("Error: data type does not fit!\n");
+					return;
+				}
+			}else if(_smm->_tables[tableID].attrs[attr].attrType == FLOAT){
+				if(relations[i]->value->datatype == INT || relations[i]->value->datatype == DATE){
+					int idata = *(int*)relations[i]->value->data;
+					double* fdata = new double(idata); 
+					relations[i]->value->data = (BufType)fdata;
+				} else if(relations[i]->value->datatype == FLOAT){
+					continue;
+				}else{
+					printf("Error: data type does not fit!\n");
+					return;
+				}
+			}else if(_smm->_tables[tableID].attrs[attr].attrType == STRING){
+		    	if(relations[i]->value->datatype == STRING){
+					continue;
+				} else{
+					printf("Error: data type does not fit!\n");
+					return;
+				}
+			}else {
+				//经过检查不允许插入NULL值域(实际上目前代码支持插入NULL),所以理论上不可能进入这里
+				assert(1);
+			}
 			continue;
 		}
-		attr = _smm->_fromNameToID(relations[i].attr2, tableID);
+		attr = _smm->_fromNameToID(relations[i]->attr2, tableID);
 		if (attr == -1) {
 			delete iter;
 			delete filehandle;
@@ -627,13 +765,13 @@ void DataOperater::Select(const string tableName, vector<Relation> relations, ve
 	SIndexManager *indexscan = nullptr;
 	for (int i = 0; i < relations.size(); i++) {
 		if (attrID2[i] != -1) continue;
-		if (relations[i].op != EQ_OP) continue;
+		if (relations[i]->op != EQ_OP) continue;
 		if (!_smm->_tables[tableID].attrs[attrID1[i]].haveIndex) continue;
 		found = true;
 		indexAttr = attrID1[i]; indexRel = i;
 		_ixm->OpenIndex((tableName + "." + _smm->_tables[tableID].attrs[indexAttr].attrName).c_str(), indexFileID);
 		indexscan = new SIndexManager(bufPageManager, indexFileID);
-		if (!indexscan->OpenScan(relations[i].data, true)) {
+		if (!indexscan->OpenScan(relations[i]->value->data, true)) {
 			delete indexscan;
 			_ixm->CloseIndex(indexFileID);
 			delete iter;
@@ -668,11 +806,11 @@ void DataOperater::Select(const string tableName, vector<Relation> relations, ve
 		unsigned long long *bitmap = (unsigned long long*)data;
 		for (int i = 0; i < relations.size(); i++) {
 			BufType data1 = data + _smm->_tables[tableID].attrs[attrID1[i]].offset;
-			BufType data2 = relations[i].data;
+			BufType data2 = relations[i]->value->data;
 			if (data2 == nullptr) {
 				data2 = data + _smm->_tables[tableID].attrs[attrID2[i]].offset;
 			}
-			if (relations[i].op == IS_NULL) {
+			if (relations[i]->op == IS_NULL) {
 				//cout << (bitmap[0] & (1ull << attrID1[i])) << endl;
 				if ((bitmap[0] & (1ull << attrID1[i])) == 0) continue;
 				else {
@@ -680,7 +818,7 @@ void DataOperater::Select(const string tableName, vector<Relation> relations, ve
 					break;
 				}
 			}
-			if (relations[i].op == IS_NOT_NULL) {
+			if (relations[i]->op == IS_NOT_NULL) {
 				//cout << (bitmap[0] & (1ull << attrID1[i])) << endl;
 				if ((bitmap[0] & (1ull << attrID1[i])) != 0) continue;
 				else {
@@ -694,7 +832,7 @@ void DataOperater::Select(const string tableName, vector<Relation> relations, ve
 			if ((attrID2[i] != -1) && ((bitmap[0] & (1ull << attrID2[i])) == 0)) {
 				ok = false; break;
 			}
-			ok = _compare(data1, data2, relations[i].op, _smm->_tables[tableID].attrs[attrID1[i]].attrType);
+			ok = _compare(data1, data2, relations[i]->op, _smm->_tables[tableID].attrs[attrID1[i]].attrType);
 			if (i == indexRel && !ok) hasNext = false;
 			if (!ok) break;
 		}
@@ -739,7 +877,7 @@ void DataOperater::Select(const string tableName, vector<Relation> relations, ve
 	delete filehandle;
 }
 
-void DataOperater::Select(string tableName1, string tableName2, vector<Relation> relations, vector<string> attrNames) {
+void DataOperater::Select(string tableName1, string tableName2, vector<Relation*> relations, vector<string> attrNames) {
 	int tableID1 = _smm->_fromNameToID(tableName1);
 	if (tableID1 == -1) {
 		fprintf(stderr, "Error: such table does not exist!\n");
@@ -778,27 +916,61 @@ void DataOperater::Select(string tableName1, string tableName2, vector<Relation>
 	}
 	vector<pair<int, int> > attrID1, attrID2;
 	for (int i = 0; i < relations.size(); i++) {
-		int tableID = _smm->_fromNameToID(relations[i].table1);
+		int tableID = _smm->_fromNameToID(relations[i]->table1);
 		if (tableID == -1) {
 			fprintf(stderr, "Error: invalid tables!\n");
 			return;
 		}
-		int attr = _smm->_fromNameToID(relations[i].attr1, tableID);
+		int attr = _smm->_fromNameToID(relations[i]->attr1, tableID);
 		if (attr == -1) {
 			fprintf(stderr, "Error: invalid columns!\n");
 			return;
 		}
 		attrID1.push_back(make_pair(tableID, attr));
-		if (relations[i].data != nullptr) {
+		if (relations[i]->value->data != nullptr) {
 			attrID2.push_back(make_pair(-1, -1));
+			//int date float类型转换
+			if(_smm->_tables[tableID].attrs[attr].attrType == INT || _smm->_tables[tableID].attrs[attr].attrType == DATE){
+				if(relations[i]->value->datatype == INT || relations[i]->value->datatype == DATE){
+					continue;
+				} else if(relations[i]->value->datatype == FLOAT){
+					double fdata = *(double*)relations[i]->value->data;
+					int* idata = new int(fdata);
+					relations[i]->value->data = (BufType)idata;
+				}else{
+					printf("Error: data type does not fit!\n");
+					return;
+				}
+			}else if(_smm->_tables[tableID].attrs[attr].attrType == FLOAT){
+				if(relations[i]->value->datatype == INT || relations[i]->value->datatype == DATE){
+					int idata = *(int*)relations[i]->value->data;
+					double* fdata = new double(idata); 
+					relations[i]->value->data = (BufType)fdata;
+				} else if(relations[i]->value->datatype == FLOAT){
+					continue;
+				}else{
+					printf("Error: data type does not fit!\n");
+					return;
+				}
+			}else if(_smm->_tables[tableID].attrs[attr].attrType == STRING){
+		    	if(relations[i]->value->datatype == STRING){
+					continue;
+				} else{
+					printf("Error: data type does not fit!\n");
+					return;
+				}
+			}else {
+				//经过检查不允许插入NULL值域(实际上目前代码支持插入NULL),所以理论上不可能进入这里
+				assert(1);
+			}
 			continue;
 		}
-		tableID = _smm->_fromNameToID(relations[i].table2);
+		tableID = _smm->_fromNameToID(relations[i]->table2);
 		if (tableID == -1) {
 			fprintf(stderr, "Error: invalid tables!\n");
 			return;
 		}
-		attr = _smm->_fromNameToID(relations[i].attr2, tableID);
+		attr = _smm->_fromNameToID(relations[i]->attr2, tableID);
 		if (attr == -1) {
 			fprintf(stderr, "Error: invalid columns!\n");
 			return;
@@ -815,7 +987,7 @@ void DataOperater::Select(string tableName1, string tableName2, vector<Relation>
 	for (int i = 0; i < relations.size(); i++) {
 		if (attrID2[i].first == -1) continue;
 		if (attrID1[i].first == attrID2[i].first) continue;
-		if (relations[i].op != EQ_OP) continue;
+		if (relations[i]->op != EQ_OP) continue;
 		if (_smm->_tables[attrID1[i].first].attrs[attrID1[i].second].haveIndex) {
 			swap(attrID1[i], attrID2[i]);
 		}
@@ -884,13 +1056,13 @@ void DataOperater::Select(string tableName1, string tableName2, vector<Relation>
 				//cout << _smm->_tables[attrID1[i].first].attrs[attrID1[i].second].offset << " " << _smm->_tables[attrID2[i].first].attrs[attrID2[i].second].offset << endl;
 				if (attrID1[i].first == tableID1) {
 					attr1 = data1 + _smm->_tables[tableID1].attrs[attrID1[i].second].offset;
-					if (relations[i].op == IS_NULL) {
+					if (relations[i]->op == IS_NULL) {
 						if ((bitmap1[0] & (1ull << attrID1[i].second)) == 0) continue;
 						else {
 							ok = false; break;
 						}
 					}
-					if (relations[i].op == IS_NOT_NULL) {
+					if (relations[i]->op == IS_NOT_NULL) {
 						if ((bitmap1[0] & (1ull << attrID1[i].second)) != 0) continue;
 						else {
 							ok = false; break;
@@ -901,13 +1073,13 @@ void DataOperater::Select(string tableName1, string tableName2, vector<Relation>
 					}
 				} else {
 					attr1 = data2 + _smm->_tables[tableID2].attrs[attrID1[i].second].offset;
-					if (relations[i].op == IS_NULL) {
+					if (relations[i]->op == IS_NULL) {
 						if ((bitmap2[0] & (1ull << attrID1[i].second)) == 0) continue;
 						else {
 							ok = false; break;
 						}
 					}
-					if (relations[i].op == IS_NOT_NULL) {
+					if (relations[i]->op == IS_NOT_NULL) {
 						if ((bitmap2[0] & (1ull << attrID1[i].second)) != 0) continue;
 						else {
 							ok = false; break;
@@ -918,7 +1090,7 @@ void DataOperater::Select(string tableName1, string tableName2, vector<Relation>
 					}
 				}
 				//cout << *(int*)attr1 << endl;
-				BufType attr2 = relations[i].data;
+				BufType attr2 = relations[i]->value->data;
 				if (attr2 == nullptr) {
 					if (attrID2[i].first == tableID1) {
 						attr2 = data1 + _smm->_tables[tableID1].attrs[attrID2[i].second].offset;
@@ -933,7 +1105,7 @@ void DataOperater::Select(string tableName1, string tableName2, vector<Relation>
 					}
 				}
 				//cout << *(int*)attr2 << endl;
-				ok = _compare(attr1, attr2, relations[i].op, _smm->_tables[attrID1[i].first].attrs[attrID1[i].second].attrType);
+				ok = _compare(attr1, attr2, relations[i]->op, _smm->_tables[attrID1[i].first].attrs[attrID1[i].second].attrType);
 				if (i == indexRel && !ok) hasNext2 = false;
 				if (!ok) break;
 			}

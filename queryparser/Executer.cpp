@@ -174,20 +174,20 @@ void Executer::execTbStmt(tbStmt *stmt)
         //INSERT INTO tb VALUES (1,1.5) , (2,1.5) , (3,15.2)
         //INSERT INTO tbName VALUES valueLists
         for(int i = 0;i < stmt->datas.size();i++) {
-            vector<BufType> rdata;
+            vector<Value*> rdata;
             vector<int> cols;
             rdata.clear();
             cols.clear();
             int nullnub = 0;
             for(int j = 0;j < stmt->datas[i].size();j++){
-                if(stmt->datas[i][j] == nullptr) {
+                if(stmt->datas[i][j]->datatype == DNULL) {
                     nullnub++;
                 }else{
                     rdata.push_back(stmt->datas[i][j]);
                     cols.push_back(j);
                 }
             }
-            if(qlm->Insert(stmt->tbName, stmt->datas[i], cols, nullnub) == 0){
+            if(qlm->Insert(stmt->tbName, rdata, cols, nullnub) == 0){
                 break;
             }
         }
@@ -202,6 +202,16 @@ void Executer::execTbStmt(tbStmt *stmt)
         break;
     }
     case tbStmt::TB_SELECT:{
+        // SELECT <selector> FROM <tableList> WHERE <whereClause>
+        // SELECT * FROM tb WHERE id > 0 AND score > 1.0;
+        // SELECT id FROM tb WHERE id > 0 AND score > 1.0;
+        printf("TBSELECT\n");
+        vector<string> attrNames;
+        for(int i = 0;i < stmt->collist.size();i++){
+            attrNames.push_back(stmt->collist[i]->colname);
+        }
+        printf("%ld,%ld\n",attrNames.size(),stmt->collist.size());
+        qlm->Select(stmt->tablelist[0], stmt->relations,attrNames);
         break;
     }
     default:

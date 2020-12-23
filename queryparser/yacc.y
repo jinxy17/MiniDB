@@ -21,9 +21,11 @@ Executer * executer;
     Stmt * ystmt;
     AttrInfo * attrinfo;
     DataType * datatype;
-    BufType buftype;
+    Value* valuetype;
     Lists* infolist;
     Tcol* tcol;
+    Relation* relation;
+    CompOp compop;
 }
 
 // 重复关键字加前缀KW
@@ -50,9 +52,11 @@ Executer * executer;
 %type <string> dbName tbName colName
 %type <attrinfo> field
 %type <datatype> type
-%type <buftype> value
-%type <infolist> fieldList valueLists valueList columnList tableList
+%type <valuetype> value
+%type <infolist> fieldList valueLists valueList columnList tableList whereClauses selector
 %type <tcol> col
+%type <relation> whereClause
+%type <compop> op
 
 %start program
 
@@ -186,10 +190,13 @@ tbStmt:
     | SELECT selector FROM tableList WHERE whereClauses
        {
           //TODO:三张以上表的连接
-          //  tbStmt* stmt = new tbStmt(tbStmt::TB_SELECT);
-          //  stmt->tbName = $3;
-          //  executer->execTbStmt(stmt);
-          //  delete stmt;
+          tbStmt* stmt = new tbStmt(tbStmt::TB_SELECT);
+          printf("cols num:%ld,tables num:%ld,whereclauses num:%ld\n",$2->collist.size(),$4->namelist.size(),$6->relations.size());
+          stmt->collist.assign($2->collist.begin(),$2->collist.end());
+          stmt->tablelist.assign($4->namelist.begin(),$4->namelist.end());
+          stmt->relations.assign($6->relations.begin(),$6->relations.end());
+          executer->execTbStmt(stmt);
+          // delete stmt;
        }
 	;
 
@@ -296,7 +303,8 @@ field:
 	       $$->notNull = false;
 	       $$->primary = false;
 	       $$->haveIndex = false;
-          $$->defaultValue = $4;
+          //TODO：sys模块需要添加对int转float,date转int的处理
+          $$->defaultValue = $4->data;
        }
     | colName type NOT KWNULL DEFAULT value
        {
@@ -307,7 +315,8 @@ field:
 	       $$->notNull = true;
 	       $$->primary = false;
 	       $$->haveIndex = false;
-          $$->defaultValue = $6;
+          //TODO：sys模块需要添加对int转float,date转int的处理
+          $$->defaultValue = $6->data;
        }
     | PRIMARY KEY '(' columnList ')'
        {
@@ -397,47 +406,77 @@ value:
          printf("value int:%d \n",$1);
          int *d = new int;
          *d = $1;
-         $$ = (BufType)d;
+         $$ = new Value(INT,(BufType)d);
        }
 	| VALUE_FLOAT
        {
           printf("value float:%f \n",$1);
           double *f = new double;
           *f = $1;
-			 $$ = (BufType)f;
+			 $$ = new Value(FLOAT,(BufType)f);
        }
     | VALUE_STRING
        {
-          $$ = (BufType)$1;
+          $$ = new Value(STRING,(BufType)$1);
        }
     | KWNULL
        {
-          $$ = nullptr;
+          $$ = new Value(DNULL,nullptr);
        }
     ;
 
 whereClause:
-      col op expr
+      col op value
        {
-
+          $$ = new Relation();
+          $$->table1 = $1->tablename;
+	       $$->attr1 = $1->colname;
+          $$->table2 = "";
+	       $$->attr2 = "";
+          $$->value = $3;
+          $$->op = $2;
        }
-    | col IS NOT KWNULL
+    | col op col
        {
-
+          $$ = new Relation();
+          $$->table1 = $1->tablename;
+	       $$->attr1 = $1->colname;
+          $$->table2 = $3->tablename;
+	       $$->attr2 = $3->colname;
+          $$->value = new Value(DNULL,nullptr);
+          $$->op = $2;
+       }
+    |col IS NOT KWNULL
+       {
+          $$ = new Relation();
+          $$->table1 = $1->tablename;
+	       $$->attr1 = $1->colname;
+          $$->table2 = "";
+	       $$->attr2 = "";
+          $$->value = new Value(DNULL,nullptr);
+          $$->op = CompOp::IS_NOT_NULL;
        }
     | col IS KWNULL
        {
-
+          $$ = new Relation();
+          $$->table1 = $1->tablename;
+	       $$->attr1 = $1->colname;
+          $$->table2 = "";
+	       $$->attr2 = "";
+          $$->value = new Value(DNULL,nullptr);
+          $$->op = CompOp::IS_NULL;
        }
     ;
 whereClauses:
       whereClause
        {
-
+         $$ = new Lists();
+         $$->relations.push_back($1);
        }
     | whereClauses AND whereClause
        {
-
+          $$ = $1;
+          $$->relations.push_back($3);
        }
     ;
 
@@ -452,11 +491,12 @@ col:
        }
     ;
 
-op: EQ | GT | LT | GE | LE | NE;
-expr: 
-      value
-    | col
-    ;
+op: EQ {$$ = CompOp::EQ_OP;}
+  | GT {$$ = CompOp::GT_OP;}
+  | LT {$$ = CompOp::LT_OP;}
+  | GE {$$ = CompOp::GE_OP;}
+  | LE {$$ = CompOp::LE_OP;}
+  | NE {$$ = CompOp::NE_OP;};
 
 setClause: 
       colName EQ value
@@ -472,17 +512,18 @@ setClause:
 selector:
       '*'
        {
-          $$.collist.push_back(new Tcol("","*"));
+          $$ = new Lists();
+          $$->collist.push_back(new Tcol("","*"));
        }
     | col 
        {
-          $$.collist.clear();
-          $$.collist.push_back($1);
+          $$ = new Lists();
+          $$->collist.push_back($1);
        }
     | selector ',' col
        {
           $$ = $1;
-          $$.collist.push_back($3);
+          $$->collist.push_back($3);
        }
     ;
 

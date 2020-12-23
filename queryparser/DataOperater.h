@@ -12,9 +12,16 @@
 #define FLOAT 1
 #define STRING 2
 #define DATE 3
+#define DNULL 4
 
 enum CompOp {
 	NO_OP, EQ_OP, NE_OP, LT_OP, GT_OP, LE_OP, GE_OP, IS_NULL, IS_NOT_NULL
+};
+
+struct Value {
+    int datatype;
+    BufType data;
+    Value(int _datatype,BufType _data):datatype(_datatype),data(_data){};
 };
 
 struct Relation {
@@ -22,7 +29,7 @@ struct Relation {
 	string attr1;
 	string table2;
 	string attr2;
-	BufType data;
+	Value* value;
 	CompOp op;
 };
 
@@ -49,12 +56,12 @@ public:
 	~DataOperater();
 	
     //插入一条数据
-	bool Insert(const string tableName, vector<BufType> values, vector<int> columns,int nullcolumnnub);
-	void Update(const Assign assign, vector<Relation> relations);
-	void Update(const Assigns assigns, vector<Relation> relations);
-	void Delete(const string tableName, vector<Relation> relations);
-	void Select(const string tableName, vector<Relation> relations, vector<string> attrNames);
-	void Select(string tableName1, string tableName2, vector<Relation> relations, vector<string> attrNames);
+	bool Insert(const string tableName, vector<Value*> insertvalues, vector<int> columns,int nullcolumnnub);
+	void Update(const Assign assign, vector<Relation*> relations);
+	void Update(const Assigns assigns, vector<Relation*> relations);
+	void Delete(const string tableName, vector<Relation*> relations);
+	void Select(const string tableName, vector<Relation*> relations, vector<string> attrNames);
+	void Select(string tableName1, string tableName2, vector<Relation*> relations, vector<string> attrNames);
 	// void Load(const string tableName, const string fileName);
 
 	bool _compare(BufType data1, BufType data2, CompOp op, int type);

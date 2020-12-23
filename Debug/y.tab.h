@@ -165,10 +165,13 @@ union YYSTYPE
     Stmt * ystmt;
     AttrInfo * attrinfo;
     DataType * datatype;
-    BufType buftype;
+    Value* valuetype;
     Lists* infolist;
+    Tcol* tcol;
+    Relation* relation;
+    CompOp compop;
 
-#line 172 "y.tab.h"
+#line 175 "y.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

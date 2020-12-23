@@ -15,6 +15,7 @@ struct DataType {
     DataType(int _dtype,int _setlength):dtype(_dtype),setlength(_setlength){};
 };
 
+
 struct Tcol {
     string tablename;
     string colname;
@@ -23,10 +24,19 @@ struct Tcol {
 
 struct Lists{
     vector<AttrInfo*> attrinfos;
-    vector<BufType> valuelist;
-    vector<vector<BufType>> valuelists;
+    vector<Value*> valuelist;
+    vector<vector<Value*>> valuelists;
     vector<string> namelist;
-    vector<string> collist; 
+    vector<Tcol*> collist; 
+    vector<Relation*> relations;
+    Lists(){
+        attrinfos.clear();
+        valuelist.clear();
+        valuelists.clear();
+        namelist.clear();
+        collist.clear();
+        relations.clear();
+    }
 };
 
 class Stmt {
@@ -85,10 +95,11 @@ public:
     Type tbType;
 
     TableInfo* tableInfo;           // only for CREATE TABLE
-    vector<vector<BufType>> datas;          // valueLists
+    vector<vector<Value*>> datas;   // valueLists
     Assigns assigns;                // setClause
-    vector<Relation> relations;     // whereClause
-    vector<string> attrs, tables;   // selector
+    vector<Relation*> relations;    // whereClause
+    
+    vector<Tcol*>   collist;        // selector
     vector<string> tablelist;       // tablelist
 
     tbStmt(Type _tbtype): Stmt(Stmt::TB_STMT) {
