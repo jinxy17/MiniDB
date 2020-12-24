@@ -306,7 +306,7 @@ void SysManager::DropTable(const string tableName) {
 	_tableNum--;
 }
 
-void SysManager::CreateIndex(const string tableName, const string attr) {
+void SysManager::_CreateIndex(const string tableName, const string attr) {
 	int tableID, attrID;
 	tableID = _fromNameToID(tableName);
 	if (tableID == -1) {
@@ -355,7 +355,7 @@ void SysManager::CreateIndex(const string tableName, const string attr) {
 	_ixm->CloseIndex(indexID);
 }
 
-void SysManager::DropIndex(const string tableName, const string attr) {
+void SysManager::_DropIndex(const string tableName, const string attr) {
 	int tableID = _fromNameToID(tableName), attrID;
 	if (tableID == -1) {
 		fprintf(stderr, "Error: table does not exist!\n");
@@ -377,6 +377,42 @@ void SysManager::DropIndex(const string tableName, const string attr) {
 	}
 	_tables[tableID].attrs[attrID].haveIndex = false;
 	_ixm->DeleteIndex((tableName + "." + attr).c_str());
+}
+
+void SysManager::CreateIndex(const string idxName, const string tableName, const vector<string> attrs) {
+	bool ret = _indexes.insert(pair<string, pair<string, vector<string> > >(idxName, pair<string, vector<string> >(tableName, attrs))).second;
+	if (!ret) {
+		fprintf(stderr, "Error: index name exists!\n");
+		return;
+	}
+	for (auto e: attrs) {
+		_CreateIndex(tableName, e);
+	}
+}
+
+void SysManager::AddIndex(const string idxName, const vector<string> attrs) {
+	map<string, pair<string, vector<string> > >::iterator it = _indexes.find(idxName);
+	if (it == _indexes.end()) {
+		fprintf(stderr, "Error: index name doesn't exist!\n");
+		return;
+	}
+	vector<string> & v = it->second.second;
+	v.insert(v.end(), attrs.begin(), attrs.end());
+	for (auto e: attrs) {
+		_CreateIndex(it->second.first, e);
+	}
+}
+
+void SysManager::DropIndex(const string idxName) {
+	map<string, pair<string, vector<string> > >::iterator it = _indexes.find(idxName);
+	if (it == _indexes.end()) {
+		fprintf(stderr, "Error: index name doesn't exist!\n");
+		return;
+	}
+	for (auto e: it->second.second) {
+		_DropIndex(it->second.first, e);
+	}
+	_indexes.erase(it);
 }
 
 void SysManager::AddPrimaryKey(const string tableName, const vector<string> attrs) {
@@ -672,7 +708,7 @@ void SysManager::AddColumn(const string tableName, AttrInfo attr) {
 	for (int i = 0; i < _tables[tableID].attrNum; i++) if (_tables[tableID].attrs[i].haveIndex) {
 		string attr = _tables[tableID].attrs[i].attrName;
 		_tables[tableID].attrs[i].haveIndex = false;
-		CreateIndex(tableName, attr);
+		_CreateIndex(tableName, attr);
 	}
 	vector<string> attrs;
 	if (_tables[tableID].primary.size() != 0) {
@@ -755,7 +791,7 @@ void SysManager::DropColumn(const string tableName, string attrName) {
 	for (int i = 0; i < _tables[tableID].attrNum; i++) if (_tables[tableID].attrs[i].haveIndex) {
 		string attr = _tables[tableID].attrs[i].attrName;
 		_tables[tableID].attrs[i].haveIndex = false;
-		CreateIndex(tableName, attr);
+		_CreateIndex(tableName, attr);
 	}
 	vector<string> attrs;
 	if (_tables[tableID].primary.size() != 0) {

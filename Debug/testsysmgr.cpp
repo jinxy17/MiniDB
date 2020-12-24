@@ -50,8 +50,14 @@ int main() {
 	// smm->DropColumn("tab2", "b4");
 	// puts("==> dropped column");
 
-	smm->AddForeignKey("tab1", {"a2", "a3"}, "tab2", {"b2", "b3"});
-	puts("==> added foreign key");
+	// smm->AddForeignKey("tab1", {"a2", "a3"}, "tab2", {"b2", "b3"});
+	// puts("==> added foreign key");
+
+	// smm->CreateIndex("index1", "table1", {"a1", "a2", "a3"});
+	// smm->CreateIndex("index1", "table1", {"b1", "b2", "b3"});
+	// smm->AddIndex("index1", {"a4", "a5"});
+	// smm->DropIndex("index1");
+	// smm->DropIndex("index1");
 
 	smm->Show();
 

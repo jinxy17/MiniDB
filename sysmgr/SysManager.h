@@ -9,6 +9,7 @@
 #include <map>
 #include <vector>
 #include <set>
+#include <map>
 
 struct AttrInfo {
 	string attrName;
@@ -31,6 +32,7 @@ struct TableInfo {
 	vector<AttrInfo> attrs;
 	vector<string> foreign; // completed by SM
 	set<string> foreignSet; // completed by SM
+
 };
 
 class SysManager {
@@ -47,8 +49,9 @@ public:
 	void Show();
 	void CreateTable(TableInfo* table);
 	void DropTable(const string tableName);
-	void CreateIndex(const string tableName, const string attr);
-	void DropIndex(const string tableName, const string attr);
+	void CreateIndex(const string idxName, const string tableName, const vector<string> attrs);
+	void AddIndex(const string idxName, const vector<string> attrs);
+	void DropIndex(const string idxName);
 	void AddPrimaryKey(const string tableName, const vector<string> attrs);
 	void DropPrimaryKey(const string tableName);
 	void AddForeignKey(const string tableName, const vector<string> attrs, const string refName, const vector<string> foreigns);
@@ -56,6 +59,8 @@ public:
 	void AddColumn(const string tableName, AttrInfo attr);
 	void DropColumn(const string tableName, string attrName);
 	
+	void _CreateIndex(const string tableName, const string attr);
+	void _DropIndex(const string tableName, const string attr);
 	bool _checkForeignKeyOnTable(int tableID);
 	int _fromNameToID(const string tableName);
 	int _fromNameToID(const string attrName, const int tableID);
@@ -64,6 +69,7 @@ public:
 	int _tableNum;
 	std::vector<TableInfo> _tables;
 	std::map<std::string, int> _tableFileID;
+	std::map<std::string, std::pair<std::string, std::vector<string> > > _indexes; // {idxName: (tableName, attrs), ...}
 private:
 	IndexManager *_ixm;
 };

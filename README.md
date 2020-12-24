@@ -176,8 +176,9 @@ class SysManager {
 	void Show();
 	void CreateTable(TableInfo* table);
 	void DropTable(const string tableName);
-	void CreateIndex(const string tableName, const string attr);
-	void DropIndex(const string tableName, const string attr);
+	void CreateIndex(const string idxName, const string tableName, const vector<string> attrs);
+	void AddIndex(const string idxName, const vector<string> attrs);
+	void DropIndex(const string idxName);
 	void AddPrimaryKey(const string tableName, const vector<string> attrs);
 	void DropPrimaryKey(const string tableName);
 	void AddForeignKey(const string tableName, const vector<string> attrs, const string refName, const vector<string> foreigns);
@@ -198,6 +199,7 @@ Xiaoyu LI
 `queryparser/yacc.y`
 ### Class doc
 1. DataOperater是数据处理模块,负责数据的插入,删除,更新以及查询
+
 ```cpp
 class DataOperater {
 public:
@@ -237,6 +239,7 @@ public:
 };
 ```
 3. 在语法分析中生成Stmt之后,通过一个全局的Executer来执行SQL命令;Executer接口如下:
+
 ```cpp
 class Executer {
 public:
