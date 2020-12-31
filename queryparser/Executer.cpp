@@ -153,7 +153,7 @@ void Executer::execTbStmt(tbStmt *stmt)
     {
     case tbStmt::TB_CREATE:
     {   
-        //CREATE TABLE tb (id INT,score FLOAT);
+        //CREATE TABLE tb (id INT NOT NULL,score FLOAT NOT NULL,age INT);
         // CREATE TABLE <tbName> ’(’<fieldList>’)’
         // for(int i = 0;i < stmt->tableInfo->attrNum;i++)
         //     printf("col %d :%s\n",i,stmt->tableInfo->attrs[i].attrName.c_str());
@@ -171,8 +171,8 @@ void Executer::execTbStmt(tbStmt *stmt)
     }
     case tbStmt::TB_INSERT:
     {   
-        //INSERT INTO tb VALUES (1,1.5) , (2,1.5) , (3,15.2)
-        //INSERT INTO tb VALUES (NULL,58.6),(5,NULL);
+        //INSERT INTO tb VALUES (1,1.5,10), (2,2.5,12),(3,3.5,15)
+        //INSERT INTO tb VALUES (NULL,58.6,15),(5,NULL,17);
         //INSERT INTO tbName VALUES valueLists
         for(int i = 0;i < stmt->datas.size();i++) {
             vector<Value*> rdata;
@@ -232,10 +232,115 @@ void Executer::execTbStmt(tbStmt *stmt)
 void Executer::execIdxStmt(idxStmt *stmt)
 {
     assert(stmt->sttype == Stmt::IDX_STMT);
+    if(currentdb == ""){
+        printf("Please choose a Database to use.\n");
+        return;
+    }
+    switch (stmt->idxType)
+    {
+    case idxStmt::IDX_CREATE:
+    {   
+        // CREATE INDEX idxName ON tbName '(' columnList ')'
+        // CREATE INDEX idxid ON tb (id)
+        // CREATE INDEX idxidsc ON tb (id,score)
+        smm->CreateIndex(stmt->idxName,stmt->tbName,stmt->collist);
+        break;
+    }
+    case idxStmt::IDX_DROP:
+    {
+        // DROP INDEX idxid
+        // printf("Drop index\n");
+        smm->DropIndex(stmt->idxName);
+        break;
+    }
+    case idxStmt::IDX_ALTER_ADD:
+    {
+        smm->AddIndex(stmt->idxName,stmt->collist);
+        break;
+    }
+    case idxStmt::IDX_ALTER_DROP:
+    {   
+        smm->DropIndex(stmt->idxName);
+        break;
+    }
+    default:
+        assert(1);
+        return;
+    }
     return;
 }
+
 void Executer::execAlterStmt(alterStmt *stmt)
 {
     assert(stmt->sttype == Stmt::ALTER_STMT);
+    if(currentdb == ""){
+        printf("Please choose a Database to use.\n");
+        return;
+    }
+    switch (stmt->alterType)
+    {
+    case alterStmt::ALTER_ADD:
+    {   
+        printf("ALTER add\n");
+        smm->AddColumn(stmt->tbName,*stmt->field);
+        printf("SUCC!\n");
+        //smm->AddColumn(stmt->tbName,*(stmt->field));
+        break;
+    }
+    case alterStmt::ALTER_DROP:
+    {
+        // printf("ALTER drop\n");
+        smm->DropColumn(stmt->tbName,stmt->colName);
+        break;
+    }
+    case alterStmt::ALTER_CHANGE:
+    {
+        printf("ALTER change\n");
+        /* 没有底层接口 */
+        break;
+    }
+    case alterStmt::ALTER_RENAME:
+    {   
+        printf("ALTER rename\n");
+        /* 没有底层接口 */
+        break;
+    }
+    case alterStmt::ALTER_DROP_PRIMARY:
+    {   
+        printf("ALTER drop pri\n");
+        smm->DropPrimaryKey(stmt->tbName);
+        break;
+    }
+    case alterStmt::ALTER_ADD_PRIMARY:
+    {   
+        printf("ALTER add pri\n");
+        /* 底层接口需要修改 */
+        break;
+    }
+    case alterStmt::ALTER_DROP_PRIMARY_WNAME:
+    {   
+        printf("ALTER drop pri with name\n");
+        /* 底层接口需要修改 */
+        // 判断外键名字是否正确?
+        smm->DropPrimaryKey(stmt->tbName);
+        break;
+    }
+    case alterStmt::ALTER_ADD_FOREIGN:
+    {   
+        printf("ALTER add foreign\n");
+        /* 底层接口需要修改 */
+        break;
+    }
+    case alterStmt::ALTER_DROP_FOREIGN_WNAME:
+    {   
+        printf("ALTER drop foreign\n");
+        /* 底层接口需要修改 */
+        break;
+    }
+    default:
+        assert(1);
+        return;
+    }
+
     return;
 }

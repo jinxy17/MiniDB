@@ -50,7 +50,7 @@ Executer * executer;
 %token <string> IDENTIFIER 
 
 %type <ivalue> type_width
-%type <string> dbName tbName colName
+%type <string> dbName tbName colName idxName pkName fkName
 %type <attrinfo> field
 %type <datatype> type
 %type <valuetype> value
@@ -207,58 +207,122 @@ tbStmt:
 idxStmt:
 	  CREATE INDEX idxName ON tbName '(' columnList ')'
        {
-
+          idxStmt* stmt = new idxStmt(idxStmt::IDX_CREATE);
+          stmt->tbName = $5;
+          stmt->idxName = $3;
+          stmt->collist.assign($7->namelist.begin(),$7->namelist.end());
+          executer->execIdxStmt(stmt);
+          delete stmt;
+          delete $7;
        }
     | DROP INDEX idxName
        {
-
+          idxStmt* stmt = new idxStmt(idxStmt::IDX_DROP);
+          executer->execIdxStmt(stmt);
+          stmt->idxName = $3;
+          delete stmt;
        }
 	| ALTER TABLE tbName ADD INDEX idxName '(' columnList ')'
        {
-
+          idxStmt* stmt = new idxStmt(idxStmt::IDX_ALTER_ADD);
+          stmt->tbName = $3;
+          stmt->idxName = $6;
+          stmt->collist.assign($8->namelist.begin(),$8->namelist.end());
+          executer->execIdxStmt(stmt);
+          delete stmt;
+          delete $8;
        }
 	| ALTER TABLE tbName DROP INDEX idxName
        {
-
+          idxStmt* stmt = new idxStmt(idxStmt::IDX_ALTER_DROP);
+          stmt->tbName = $3;
+          stmt->idxName = $6;
+          executer->execIdxStmt(stmt);
+          delete stmt;
        }
     ;
 
 alterStmt: 
       ALTER TABLE tbName ADD field
        {
-
+          alterStmt* stmt = new alterStmt(alterStmt::ALTER_ADD);
+          stmt->tbName = $3;
+          stmt->field = $5;
+          executer->execAlterStmt(stmt);
+         //  delete stmt;
+         //  delete $5;
        }
 	| ALTER TABLE tbName DROP colName 
        {
-
+          alterStmt* stmt = new alterStmt(alterStmt::ALTER_DROP);
+          stmt->tbName = $3;
+          stmt->colName = $5;
+          executer->execAlterStmt(stmt);
+          delete stmt;
        }
 	| ALTER TABLE tbName CHANGE colName field
        {
-
+          alterStmt* stmt = new alterStmt(alterStmt::ALTER_CHANGE);
+          stmt->tbName = $3;
+          stmt->colName = $5;
+          stmt->field = $6;
+          executer->execAlterStmt(stmt);
+          delete stmt;
+          delete $6;
        }
 	| ALTER TABLE tbName RENAME TO tbName
        {
-
+          alterStmt* stmt = new alterStmt(alterStmt::ALTER_RENAME);
+          stmt->tbName = $3;
+          stmt->newtbName = $6;
+          executer->execAlterStmt(stmt);
+          delete stmt;
        }
 	| ALTER TABLE tbName DROP PRIMARY KEY
        {
-
+          alterStmt* stmt = new alterStmt(alterStmt::ALTER_DROP_PRIMARY);
+          stmt->tbName = $3;
+          executer->execAlterStmt(stmt);
+          delete stmt;
        }
 	| ALTER TABLE tbName ADD CONSTRAINT pkName PRIMARY KEY '(' columnList ')'
        {
-
+          alterStmt* stmt = new alterStmt(alterStmt::ALTER_ADD_PRIMARY);
+          stmt->tbName = $3;
+          stmt->pkName = $6;
+          stmt->collist.assign($10->namelist.begin(),$10->namelist.end());
+          executer->execAlterStmt(stmt);
+          delete stmt;
+          delete $10;
        }
 	| ALTER TABLE tbName DROP PRIMARY KEY pkName
        {
-
+          alterStmt* stmt = new alterStmt(alterStmt::ALTER_DROP_PRIMARY_WNAME);
+          stmt->tbName = $3;
+          stmt->pkName = $7;
+          executer->execAlterStmt(stmt);
+          delete stmt;
        }
 	| ALTER TABLE tbName ADD CONSTRAINT fkName FOREIGN KEY '(' columnList ')' REFERENCES tbName '(' columnList ')'
        {
-
+          alterStmt* stmt = new alterStmt(alterStmt::ALTER_ADD_FOREIGN);
+          stmt->tbName = $3;
+          stmt->fkName = $6;
+          stmt->collist.assign($10->namelist.begin(),$10->namelist.end());
+          stmt->fktbName = $13;
+          stmt->fkcollist.assign($15->namelist.begin(),$15->namelist.end());
+          executer->execAlterStmt(stmt);
+          delete stmt;
+          delete $10;
+          delete $15;
        }
 	| ALTER TABLE tbName DROP FOREIGN KEY fkName
        {
-
+          alterStmt* stmt = new alterStmt(alterStmt::ALTER_DROP_FOREIGN_WNAME);
+          stmt->tbName = $3;
+          stmt->fkName = $7;
+          executer->execAlterStmt(stmt);
+          delete stmt;
        }
     ;
 

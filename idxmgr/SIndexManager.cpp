@@ -13,7 +13,8 @@ SIndexManager::~SIndexManager()
     this->bpm->close();
 }
 
-void SIndexManager::readInfo(){
+void SIndexManager::readInfo()
+{
     BufType b = this->bpm->getPage(this->fileID, 0, this->infoPage); //将第0个页面(idx页)读入到缓存中，在缓存中页号为this->infoPage
 
     this->ixType = b[0];
@@ -21,7 +22,7 @@ void SIndexManager::readInfo(){
     this->ixPP = b[2];
     this->rootIdx = b[3];
     this->bmPage = new bitset<DATA_SIZE_IX * 8>;
-    memcpy(this->bmPage,(unsigned char *)b + DATA_OFFSET_IX,sizeof(bitset<DATA_SIZE_IX * 8>));
+    memcpy(this->bmPage, (unsigned char *)b + DATA_OFFSET_IX, sizeof(bitset<DATA_SIZE_IX * 8>));
 
     //DEBUG
     // printf("ReadInfo--Index: \n  ixType:%d\n  ixSize:%d\n  ixPP:%d\n  rootIdx:%d\n",ixType,ixSize,ixPP,rootIdx);
@@ -29,7 +30,8 @@ void SIndexManager::readInfo(){
     bpm->access(this->infoPage);
 }
 
-void SIndexManager::writeInfo(){
+void SIndexManager::writeInfo()
+{
     BufType b = this->bpm->getPage(this->fileID, 0, this->infoPage); //将第0个页面(idx页)读入到缓存中，在缓存中页号为this->infoPage
 
     b[0] = this->ixType;
@@ -103,7 +105,7 @@ void SIndexManager::readNode(BPlusNode *node, int id)
     //留下缓存访问记录
     bpm->access(node->pageID);
     return;
-}   
+}
 
 bool SIndexManager::insertIx(void *key, int page, int offset)
 {
@@ -118,13 +120,13 @@ bool SIndexManager::insertIx(void *key, int page, int offset)
         //由右边向左遍历,寻找插入位置
         int i = (*node->keyNum) - 1;
         //printf("(*node->keyNum): %d\n",(*node->keyNum));
-        while (i > 0 && !compare(node->key + i * (this->ixSize), key, node->pages[i], page, node->offsets[i], offset)) 
+        while (i > 0 && !compare(node->key + i * (this->ixSize), key, node->pages[i], page, node->offsets[i], offset))
             i--;
         id = node->childs[i];
         //printf("i: %d,id: %d\n",i,id);
         this->readNode(node, id);
     }
-    
+
     // printf("find leaf:%d\n",id);
     // node->print_st();
     //找到了叶子节点,并将在节点中的某个位置插入
@@ -169,7 +171,8 @@ bool SIndexManager::insertIx(void *key, int page, int offset)
         {
             //没有父节点,即根节点特判
             //产生一个新节点作为父节点(也是新的根节点)
-            if(this->getEmptyPage(*node->parent) == false){
+            if (this->getEmptyPage(*node->parent) == false)
+            {
                 return false;
             }
             this->rootIdx = (*node->parent);
@@ -192,7 +195,8 @@ bool SIndexManager::insertIx(void *key, int page, int offset)
 
         //产生新节点
         int newID;
-        if(this->getEmptyPage(newID) == false) return false;
+        if (this->getEmptyPage(newID) == false)
+            return false;
         //printf("split:id = %d,newID, %d\n",id,newID);
         //设置新节点属性
         BPlusNode *newNode = new BPlusNode();
@@ -262,7 +266,7 @@ bool SIndexManager::insertIx(void *key, int page, int offset)
             parentNode->childs[i] = parentNode->childs[i - 1];
         }
 
-        // for (int i = (*parentNode->keyNum - 1); i >= 0; i--)    
+        // for (int i = (*parentNode->keyNum - 1); i >= 0; i--)
         // {
         //     printf(" %d ",parentNode->childs[i]);
         // }
@@ -412,7 +416,7 @@ bool SIndexManager::deleteIx(void *key, int page, int offset)
 }
 
 //获取一个空页,返回页号
-bool SIndexManager::getEmptyPage(int& idx)
+bool SIndexManager::getEmptyPage(int &idx)
 {
     int curPage;
     for (curPage = 0;; curPage++)
@@ -435,16 +439,20 @@ bool SIndexManager::getEmptyPage(int& idx)
 //将某一页设置为空,返回成功与否
 bool SIndexManager::setEmptyPage(int idx)
 {
-    if (idx > 1 && idx < DATA_SIZE_IX << 3) {
+    if (idx > 1 && idx < DATA_SIZE_IX << 3)
+    {
         (*this->bmPage)[idx] = false;
         this->writeInfo();
         return true;
-    } else {
+    }
+    else
+    {
         printf("Error, can't set empty page\n");
         return false;
     }
 }
 
+//返回(key1,page1,offset1) < (key2,page2,offset2)
 bool SIndexManager::compare(void *key1, void *key2, int page1, int page2, int offset1, int offset2)
 {
     //先行比较数值
@@ -485,10 +493,38 @@ bool SIndexManager::compare(void *key1, void *key2, int page1, int page2, int of
         return false;
 }
 
-//只进行键值比较,返回key1<key2
-bool SIndexManager::compareKey(void *key1, void *key2)
+//只进行键值比较,返回key1 == key2
+bool SIndexManager::compareKeyEq(void *key1, void *key2)
 {
-    //先行比较数值
+    if ((this->ixType) == INT)
+    {
+        if (*((int *)key1) == *((int *)key2))
+            return true;
+        else
+            return false;
+    }
+    else if ((this->ixType) == FLOAT)
+    {
+        if (*((double *)key1) == *((double *)key2))
+            return true;
+        else
+            return false;
+    }
+    else if ((this->ixType) == STRING)
+    {
+        for (int i = 0; i < (this->ixSize); i++)
+        {
+            if (((char *)key1)[i] != ((char *)key2)[i])
+                return false;
+        }
+        return true;
+    }
+    return false;
+}
+
+//只进行键值比较,返回key1 < key2
+bool SIndexManager::compareKeyLt(void *key1, void *key2)
+{
     if ((this->ixType) == INT)
     {
         if (*((int *)key1) < *((int *)key2))
@@ -516,9 +552,40 @@ bool SIndexManager::compareKey(void *key1, void *key2)
     return false;
 }
 
-bool SIndexManager::Exists(void *key) {
+//只进行键值比较,返回key1 <= key2
+bool SIndexManager::compareKeyLe(void *key1, void *key2)
+{
+    if ((this->ixType) == INT)
+    {
+        if (*((int *)key1) < *((int *)key2))
+            return true;
+        else if (*((int *)key1) > *((int *)key2))
+            return false;
+    }
+    else if ((this->ixType) == FLOAT)
+    {
+        if (*((double *)key1) < *((double *)key2))
+            return true;
+        else if (*((double *)key1) > *((double *)key2))
+            return false;
+    }
+    else if ((this->ixType) == STRING)
+    {
+        for (int i = 0; i < (this->ixSize); i++)
+        {
+            if (((char *)key1)[i] < ((char *)key2)[i])
+                return true;
+            else if (((char *)key1)[i] > ((char *)key2)[i])
+                return false;
+        }
+    }
+    return true;
+}
+
+bool SIndexManager::Exists(void *key)
+{
     int page = -1;
-	int offset = page;
+    int offset = page;
 
     //获取根节点的页号
     int id = this->rootIdx;
@@ -535,29 +602,37 @@ bool SIndexManager::Exists(void *key) {
         this->readNode(node, id);
     }
     scan_nodeID = id;
-	scan_entryID = -1;
-	for (int i = 0; i <= *node->keyNum; i++) {
-        if (i == *node->keyNum) {
+    scan_entryID = -1;
+    for (int i = 0; i <= *node->keyNum; i++)
+    {
+        if (i == *node->keyNum)
+        {
             scan_nodeID = *node->next;
-		    scan_entryID = 0;
-        } else if (compare(key, node->key + i * (this->ixSize), page, node->pages[i], offset, node->offsets[i])) {
-            scan_entryID = i;
-			break;
+            scan_entryID = 0;
         }
-	}
+        else if (compare(key, node->key + i * (this->ixSize), page, node->pages[i], offset, node->offsets[i]))
+        {
+            scan_entryID = i;
+            break;
+        }
+    }
     bool ret;
-	if (scan_nodeID == 0) {
-        ret =  false;
-    } else {
-        ret = !compareKey(key, node->key + scan_entryID * (this->ixSize));
+    if (scan_nodeID == 0)
+    {
+        ret = false;
+    }
+    else
+    {
+        ret = !compareKeyLt(key, node->key + scan_entryID * (this->ixSize));
     }
     delete node;
     return ret;
 }
 
-bool SIndexManager::OpenScan(void *key, bool lower) {
-	int page = lower ? -1 : 1 << 30;
-	int offset = page;
+bool SIndexManager::OpenScan(void *key, bool lower, bool scanself)
+{
+    int page = lower ? -1 : 1 << 30;
+    int offset = page;
 
     //获取根节点的页号
     int id = this->rootIdx;
@@ -566,96 +641,180 @@ bool SIndexManager::OpenScan(void *key, bool lower) {
     while (*node->isLeaf == false)
     {
         //非叶子节点,继续向下深入
-        //由右边向左遍历,寻找插入位置
         int i = (*node->keyNum) - 1;
-        while (i > 0 && compare(key, node->key + i * (this->ixSize), page, node->pages[i], offset, node->offsets[i]))
-            i--;
+        if (lower && scanself)
+        {
+            // lower + scanself => 从最小的值为key的节点开始scan =>大于等于(对等于的遍历也放到这里面)
+            // 由右边向左遍历,寻找插入位置
+            // 父节点记录子节点最小的entry
+            while (i > 0 && compare(key, node->key + i * (this->ixSize), page, node->pages[i], offset, node->offsets[i]))
+                i--;
+        }else if(!lower && !scanself){
+            // !lower + !scanself => 从最小的值大于key的节点开始scan => 大于
+            // 由右边向左遍历,寻找插入位置
+            while (i > 0 && compareKeyLt(key, node->key + i * (this->ixSize)))
+                i--;
+        }else if(lower && !scanself) {
+            //lower + !scanself => 从最大的值小于key的节点开始scan => 小于
+            while(i > 0 && compareKeyLe(key, node->key + i * (this->ixSize)))
+                i--;
+        } else {
+            //!lower + scanself => 从最大的值为key的节点开始scan => 小于等于
+            while(i > 0 && compare(key, node->key + i * (this->ixSize), page, node->pages[i], offset, node->offsets[i]))
+                i--;
+        }
         id = node->childs[i];
         this->readNode(node, id);
     }
     scan_nodeID = id;
-	scan_entryID = -1;
-	for (int i = 0; i <= *node->keyNum; i++) {
-        if (i == *node->keyNum) {
-            scan_nodeID = *node->next;
-		    scan_entryID = 0;
-        } else if (compare(key, node->key + i * (this->ixSize), page, node->pages[i], offset, node->offsets[i])) {
-            scan_entryID = i;
-			break;
+    scan_entryID = -1;
+    for (int i = 0; i <= *node->keyNum; i++)
+    {
+        if (lower && scanself)
+        {
+            //lower + scanself => 从最小的值为key的节点开始scan =>大于等于
+            if (i == *node->keyNum)
+            {
+                scan_nodeID = *node->next;
+                scan_entryID = 0;
+            }
+            else if (compare(key, node->key + i * (this->ixSize), page, node->pages[i], offset, node->offsets[i]))
+            {
+                scan_entryID = i;
+                break;
+            }
+        } else if (!lower && !scanself)
+        {
+            // !lower + !scanself => 从最小的值大于key的节点开始scan => 大于
+            if (i == *node->keyNum)
+            {
+                scan_nodeID = *node->next;
+                scan_entryID = 0;
+            }
+            else if (compareKeyLt(key, node->key + i * (this->ixSize)))
+            {
+                scan_entryID = i;
+                break;
+            }
+        } else if (lower && !scanself)
+        {
+            //lower + !scanself => 从最大的值小于key的节点开始scan => 小于
+            if (i == *node->keyNum)
+            {
+                //这个Node里所有节点的值都比key小,但下一个节点的起始值又大于等于key,所以从这个节点的最后一个entry开始scan;
+                scan_entryID = *node->keyNum - 1;
+            }
+            else if (compareKeyLe(key, node->key + i * (this->ixSize)))
+            {
+                //找到了第一个值大于等于key的节点,那么最大的,值小于Key的节点应该在它前一个
+                scan_entryID =(i == 0) ? 0 : i - 1;
+                break;
+            }
+        } else {
+            //!lower + scanself => 从最大的值为key的节点开始scan => 小于等于
+            if (i == *node->keyNum)
+            {
+                //这个Node里所有节点的值都小于等于key,但下一个节点的起始值又比key大,所以从这个节点的最后一个entry开始scan;
+                scan_entryID = *node->keyNum - 1;
+            }
+            else if (compare(key, node->key + i * (this->ixSize), page, node->pages[i], offset, node->offsets[i]))
+            {
+                scan_entryID =(i == 0) ? 0 : i - 1;
+                break;
+            }
         }
-	}
+    }
     delete node;
-	if (scan_nodeID == 0) return false;
-	return true;
-}
-
-bool SIndexManager::GetNextEntry(int &page, int &offset) {
-	if (scan_nodeID == 0) return false;
-	BPlusNode *node = new BPlusNode();
-    this->readNode(node, scan_nodeID);
-	bpm->access(node->pageID);
-	page = node->pages[scan_entryID]; offset = node->offsets[scan_entryID];
-	if (scan_entryID == *node->keyNum - 1) {
-        // printf("Enter next node\n");
-		if (*node->next == 0) {
-			delete node;
-			return false;
-		}
-		scan_nodeID = *node->next;
-		scan_entryID = 0;
-	} else
-		scan_entryID++;
-	delete node;
-	return true;
-}
-
-bool SIndexManager::GetPrevEntry(int &page, int &offset) {
-	if (scan_nodeID == 0) return false;
-	BPlusNode *node = new BPlusNode();
-    this->readNode(node, scan_nodeID);
-	bpm->access(node->pageID);
-	page = node->pages[scan_entryID]; offset = node->offsets[scan_entryID];
-	if (scan_entryID == 0) {
-		if (*node->prev == 0) {
-			delete node;
-			return false;
-		}
-		scan_nodeID = *node->prev;
-		this->readNode(node, scan_nodeID);
-        bpm->access(node->pageID);
-		scan_entryID = *node->keyNum - 1;
-	} else
-		scan_entryID--;
-	delete node;
-	return true;
-}
-
-bool SIndexManager::CloseScan() {
+    if (scan_nodeID == 0)
+        return false;
     return true;
 }
 
-void SIndexManager::Print_Tree() {
+bool SIndexManager::GetNextEntry(int &page, int &offset)
+{
+    if (scan_nodeID == 0)
+        return false;
+    BPlusNode *node = new BPlusNode();
+    this->readNode(node, scan_nodeID);
+    bpm->access(node->pageID);
+    page = node->pages[scan_entryID];
+    offset = node->offsets[scan_entryID];
+    if (scan_entryID == *node->keyNum - 1)
+    {
+        // printf("Enter next node\n");
+        if (*node->next == 0)
+        {
+            delete node;
+            return false;
+        }
+        scan_nodeID = *node->next;
+        scan_entryID = 0;
+    }
+    else
+        scan_entryID++;
+    delete node;
+    return true;
+}
+
+bool SIndexManager::GetPrevEntry(int &page, int &offset)
+{
+    if (scan_nodeID == 0)
+        return false;
+    BPlusNode *node = new BPlusNode();
+    this->readNode(node, scan_nodeID);
+    bpm->access(node->pageID);
+    page = node->pages[scan_entryID];
+    offset = node->offsets[scan_entryID];
+    if (scan_entryID == 0)
+    {
+        if (*node->prev == 0)
+        {
+            delete node;
+            return false;
+        }
+        scan_nodeID = *node->prev;
+        this->readNode(node, scan_nodeID);
+        bpm->access(node->pageID);
+        scan_entryID = *node->keyNum - 1;
+    }
+    else
+        scan_entryID--;
+    delete node;
+    return true;
+}
+
+bool SIndexManager::CloseScan()
+{
+    return true;
+}
+
+void SIndexManager::Print_Tree()
+{
     //获取根节点的页号
     int id = this->rootIdx;
     int keynub = Print_Node(id, 0);
-    printf("共有%d个索引项\n",keynub);
+    printf("共有%d个索引项\n", keynub);
 }
 
-int SIndexManager::Print_Node(int nodeID,int depth) {
-    for(int i = 0;i < depth;i++){
+int SIndexManager::Print_Node(int nodeID, int depth)
+{
+    for (int i = 0; i < depth; i++)
+    {
         printf("    ");
     }
     BPlusNode *node = new BPlusNode();
     this->readNode(node, nodeID);
-    printf("第%d层:%d, Parent:%d, Prev:%d, Next:%d, Min:",depth + 1,nodeID,*node->parent,*node->prev,*node->next);
-    node->print_key(0,this->ixType,this->ixSize);
+    printf("第%d层:%d, Parent:%d, Prev:%d, Next:%d, Min:", depth + 1, nodeID, *node->parent, *node->prev, *node->next);
+    node->print_key(0, this->ixType, this->ixSize);
     printf(", Max:");
-    node->print_key(*node->keyNum - 1,this->ixType,this->ixSize);
-    printf(",KeyNum:%d\n",*node->keyNum);
+    node->print_key(*node->keyNum - 1, this->ixType, this->ixSize);
+    printf(",KeyNum:%d\n", *node->keyNum);
     int keynub = *node->keyNum;
-    if(*node->isLeaf == false){
+    if (*node->isLeaf == false)
+    {
         keynub = 0;
-        for(int i = 0;i < *node->keyNum;i++) {
+        for (int i = 0; i < *node->keyNum; i++)
+        {
             keynub = keynub + Print_Node(node->childs[i], depth + 1);
         }
     }

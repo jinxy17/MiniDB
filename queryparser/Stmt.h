@@ -129,7 +129,7 @@ public:
     ~tbStmt(){};
 };
 
-/* TODO: 补全idx和alter */
+
 // idxStmt:
 // CREATE INDEX <idxName> ON <tbName>’ (’< columnList >’) ’
 // DROP INDEX <idxName>
@@ -143,6 +143,7 @@ public:
     Type idxType;
     string idxName;
     string tbName;
+    vector<string> collist;       // columnList
 
     idxStmt(Type _idxtype): Stmt(Stmt::IDX_STMT) {
         idxType = _idxtype;
@@ -163,11 +164,24 @@ public:
 class alterStmt :public Stmt {
 public:
     enum Type {
-        ALTER_ADD,ALTER_DROP,ALTER_CHANGE,ALTER_RENAME,ALTER_DROP_PRIMARY
+        ALTER_ADD,ALTER_DROP,ALTER_CHANGE,ALTER_RENAME,
+        ALTER_DROP_PRIMARY,
+        ALTER_ADD_PRIMARY,ALTER_DROP_PRIMARY_WNAME,
+        ALTER_ADD_FOREIGN,ALTER_DROP_FOREIGN_WNAME
     };
 
     Type alterType;
     string tbName;
+    string newtbName;
+    string colName;
+    string pkName;
+
+    string fktbName;
+    string fkName;
+
+    vector<string> collist;
+    vector<string> fkcollist;
+    AttrInfo* field;
 
     alterStmt(Type _altertype): Stmt(Stmt::ALTER_STMT) {
         alterType = _altertype;

@@ -635,13 +635,13 @@ static const yytype_int16 yyrline[] =
 {
        0,    68,    68,    72,    79,    83,    84,    85,    86,    87,
       91,   100,   108,   116,   124,   133,   150,   157,   161,   170,
-     179,   191,   208,   212,   216,   220,   227,   231,   235,   239,
-     243,   247,   251,   255,   259,   266,   272,   279,   290,   301,
-     313,   325,   336,   350,   354,   358,   362,   369,   374,   380,
-     386,   394,   400,   408,   415,   422,   426,   433,   443,   453,
-     463,   475,   480,   488,   492,   498,   499,   500,   501,   502,
-     503,   506,   517,   531,   536,   541,   549,   554,   562,   567,
-     574,   575,   576,   577,   578,   579
+     179,   191,   208,   218,   225,   235,   246,   255,   263,   273,
+     281,   288,   298,   306,   319,   330,   336,   343,   354,   365,
+     377,   389,   400,   414,   418,   422,   426,   433,   438,   444,
+     450,   458,   464,   472,   479,   486,   490,   497,   507,   517,
+     527,   539,   544,   552,   556,   562,   563,   564,   565,   566,
+     567,   570,   581,   595,   600,   605,   613,   618,   626,   631,
+     638,   639,   640,   641,   642,   643
 };
 #endif
 
@@ -1776,128 +1776,192 @@ yyreduce:
   case 22:
 #line 209 "../queryparser/yacc.y"
        {
-
+          idxStmt* stmt = new idxStmt(idxStmt::IDX_CREATE);
+          stmt->tbName = (yyvsp[-3].string);
+          stmt->idxName = (yyvsp[-5].string);
+          stmt->collist.assign((yyvsp[-1].infolist)->namelist.begin(),(yyvsp[-1].infolist)->namelist.end());
+          executer->execIdxStmt(stmt);
+          delete stmt;
+          delete (yyvsp[-1].infolist);
        }
-#line 1782 "y.tab.c"
+#line 1788 "y.tab.c"
     break;
 
   case 23:
-#line 213 "../queryparser/yacc.y"
+#line 219 "../queryparser/yacc.y"
        {
-
+          idxStmt* stmt = new idxStmt(idxStmt::IDX_DROP);
+          executer->execIdxStmt(stmt);
+          stmt->idxName = (yyvsp[0].string);
+          delete stmt;
        }
-#line 1790 "y.tab.c"
+#line 1799 "y.tab.c"
     break;
 
   case 24:
-#line 217 "../queryparser/yacc.y"
+#line 226 "../queryparser/yacc.y"
        {
-
+          idxStmt* stmt = new idxStmt(idxStmt::IDX_ALTER_ADD);
+          stmt->tbName = (yyvsp[-6].string);
+          stmt->idxName = (yyvsp[-3].string);
+          stmt->collist.assign((yyvsp[-1].infolist)->namelist.begin(),(yyvsp[-1].infolist)->namelist.end());
+          executer->execIdxStmt(stmt);
+          delete stmt;
+          delete (yyvsp[-1].infolist);
        }
-#line 1798 "y.tab.c"
+#line 1813 "y.tab.c"
     break;
 
   case 25:
-#line 221 "../queryparser/yacc.y"
+#line 236 "../queryparser/yacc.y"
        {
-
+          idxStmt* stmt = new idxStmt(idxStmt::IDX_ALTER_DROP);
+          stmt->tbName = (yyvsp[-3].string);
+          stmt->idxName = (yyvsp[0].string);
+          executer->execIdxStmt(stmt);
+          delete stmt;
        }
-#line 1806 "y.tab.c"
+#line 1825 "y.tab.c"
     break;
 
   case 26:
-#line 228 "../queryparser/yacc.y"
+#line 247 "../queryparser/yacc.y"
        {
-
-       }
-#line 1814 "y.tab.c"
-    break;
-
-  case 27:
-#line 232 "../queryparser/yacc.y"
-       {
-
-       }
-#line 1822 "y.tab.c"
-    break;
-
-  case 28:
-#line 236 "../queryparser/yacc.y"
-       {
-
-       }
-#line 1830 "y.tab.c"
-    break;
-
-  case 29:
-#line 240 "../queryparser/yacc.y"
-       {
-
+          alterStmt* stmt = new alterStmt(alterStmt::ALTER_ADD);
+          stmt->tbName = (yyvsp[-2].string);
+          stmt->field = (yyvsp[0].attrinfo);
+          executer->execAlterStmt(stmt);
+         //  delete stmt;
+         //  delete $5;
        }
 #line 1838 "y.tab.c"
     break;
 
-  case 30:
-#line 244 "../queryparser/yacc.y"
+  case 27:
+#line 256 "../queryparser/yacc.y"
        {
-
+          alterStmt* stmt = new alterStmt(alterStmt::ALTER_DROP);
+          stmt->tbName = (yyvsp[-2].string);
+          stmt->colName = (yyvsp[0].string);
+          executer->execAlterStmt(stmt);
+          delete stmt;
        }
-#line 1846 "y.tab.c"
+#line 1850 "y.tab.c"
+    break;
+
+  case 28:
+#line 264 "../queryparser/yacc.y"
+       {
+          alterStmt* stmt = new alterStmt(alterStmt::ALTER_CHANGE);
+          stmt->tbName = (yyvsp[-3].string);
+          stmt->colName = (yyvsp[-1].string);
+          stmt->field = (yyvsp[0].attrinfo);
+          executer->execAlterStmt(stmt);
+          delete stmt;
+          delete (yyvsp[0].attrinfo);
+       }
+#line 1864 "y.tab.c"
+    break;
+
+  case 29:
+#line 274 "../queryparser/yacc.y"
+       {
+          alterStmt* stmt = new alterStmt(alterStmt::ALTER_RENAME);
+          stmt->tbName = (yyvsp[-3].string);
+          stmt->newtbName = (yyvsp[0].string);
+          executer->execAlterStmt(stmt);
+          delete stmt;
+       }
+#line 1876 "y.tab.c"
+    break;
+
+  case 30:
+#line 282 "../queryparser/yacc.y"
+       {
+          alterStmt* stmt = new alterStmt(alterStmt::ALTER_DROP_PRIMARY);
+          stmt->tbName = (yyvsp[-3].string);
+          executer->execAlterStmt(stmt);
+          delete stmt;
+       }
+#line 1887 "y.tab.c"
     break;
 
   case 31:
-#line 248 "../queryparser/yacc.y"
+#line 289 "../queryparser/yacc.y"
        {
-
+          alterStmt* stmt = new alterStmt(alterStmt::ALTER_ADD_PRIMARY);
+          stmt->tbName = (yyvsp[-8].string);
+          stmt->pkName = (yyvsp[-5].string);
+          stmt->collist.assign((yyvsp[-1].infolist)->namelist.begin(),(yyvsp[-1].infolist)->namelist.end());
+          executer->execAlterStmt(stmt);
+          delete stmt;
+          delete (yyvsp[-1].infolist);
        }
-#line 1854 "y.tab.c"
+#line 1901 "y.tab.c"
     break;
 
   case 32:
-#line 252 "../queryparser/yacc.y"
+#line 299 "../queryparser/yacc.y"
        {
-
+          alterStmt* stmt = new alterStmt(alterStmt::ALTER_DROP_PRIMARY_WNAME);
+          stmt->tbName = (yyvsp[-4].string);
+          stmt->pkName = (yyvsp[0].string);
+          executer->execAlterStmt(stmt);
+          delete stmt;
        }
-#line 1862 "y.tab.c"
+#line 1913 "y.tab.c"
     break;
 
   case 33:
-#line 256 "../queryparser/yacc.y"
+#line 307 "../queryparser/yacc.y"
        {
-
+          alterStmt* stmt = new alterStmt(alterStmt::ALTER_ADD_FOREIGN);
+          stmt->tbName = (yyvsp[-13].string);
+          stmt->fkName = (yyvsp[-10].string);
+          stmt->collist.assign((yyvsp[-6].infolist)->namelist.begin(),(yyvsp[-6].infolist)->namelist.end());
+          stmt->fktbName = (yyvsp[-3].string);
+          stmt->fkcollist.assign((yyvsp[-1].infolist)->namelist.begin(),(yyvsp[-1].infolist)->namelist.end());
+          executer->execAlterStmt(stmt);
+          delete stmt;
+          delete (yyvsp[-6].infolist);
+          delete (yyvsp[-1].infolist);
        }
-#line 1870 "y.tab.c"
+#line 1930 "y.tab.c"
     break;
 
   case 34:
-#line 260 "../queryparser/yacc.y"
+#line 320 "../queryparser/yacc.y"
        {
-
+          alterStmt* stmt = new alterStmt(alterStmt::ALTER_DROP_FOREIGN_WNAME);
+          stmt->tbName = (yyvsp[-4].string);
+          stmt->fkName = (yyvsp[0].string);
+          executer->execAlterStmt(stmt);
+          delete stmt;
        }
-#line 1878 "y.tab.c"
+#line 1942 "y.tab.c"
     break;
 
   case 35:
-#line 267 "../queryparser/yacc.y"
+#line 331 "../queryparser/yacc.y"
        {
           (yyval.infolist) = new Lists();
           (yyval.infolist)->attrinfos.clear();
           (yyval.infolist)->attrinfos.push_back((yyvsp[0].attrinfo));
        }
-#line 1888 "y.tab.c"
+#line 1952 "y.tab.c"
     break;
 
   case 36:
-#line 273 "../queryparser/yacc.y"
+#line 337 "../queryparser/yacc.y"
        {
           (yyval.infolist) = (yyvsp[-2].infolist);
           (yyval.infolist)->attrinfos.push_back((yyvsp[0].attrinfo));
        }
-#line 1897 "y.tab.c"
+#line 1961 "y.tab.c"
     break;
 
   case 37:
-#line 280 "../queryparser/yacc.y"
+#line 344 "../queryparser/yacc.y"
        {
           (yyval.attrinfo) = new AttrInfo();
           (yyval.attrinfo)->attrName = (yyvsp[-1].string);
@@ -1908,11 +1972,11 @@ yyreduce:
 	       (yyval.attrinfo)->haveIndex = false;
           delete (yyvsp[0].datatype);
        }
-#line 1912 "y.tab.c"
+#line 1976 "y.tab.c"
     break;
 
   case 38:
-#line 291 "../queryparser/yacc.y"
+#line 355 "../queryparser/yacc.y"
        {
           (yyval.attrinfo) = new AttrInfo();
           (yyval.attrinfo)->attrName = (yyvsp[-3].string);
@@ -1923,11 +1987,11 @@ yyreduce:
 	       (yyval.attrinfo)->haveIndex = false;
           delete (yyvsp[-2].datatype);
        }
-#line 1927 "y.tab.c"
+#line 1991 "y.tab.c"
     break;
 
   case 39:
-#line 302 "../queryparser/yacc.y"
+#line 366 "../queryparser/yacc.y"
        {
           (yyval.attrinfo) = new AttrInfo();
           (yyval.attrinfo)->attrName = (yyvsp[-3].string);
@@ -1939,11 +2003,11 @@ yyreduce:
           //TODO：sys模块需要添加对int转float,date转int的处理
           (yyval.attrinfo)->defaultValue = (yyvsp[0].valuetype)->data;
        }
-#line 1943 "y.tab.c"
+#line 2007 "y.tab.c"
     break;
 
   case 40:
-#line 314 "../queryparser/yacc.y"
+#line 378 "../queryparser/yacc.y"
        {
           (yyval.attrinfo) = new AttrInfo();
           (yyval.attrinfo)->attrName = (yyvsp[-5].string);
@@ -1955,11 +2019,11 @@ yyreduce:
           //TODO：sys模块需要添加对int转float,date转int的处理
           (yyval.attrinfo)->defaultValue = (yyvsp[0].valuetype)->data;
        }
-#line 1959 "y.tab.c"
+#line 2023 "y.tab.c"
     break;
 
   case 41:
-#line 326 "../queryparser/yacc.y"
+#line 390 "../queryparser/yacc.y"
        {
          //TODO:多行主键
          //  $$ = new AttrInfo();
@@ -1970,11 +2034,11 @@ yyreduce:
 	      //  $$->primary = false;
 	      //  $$->haveIndex = false;
        }
-#line 1974 "y.tab.c"
+#line 2038 "y.tab.c"
     break;
 
   case 42:
-#line 337 "../queryparser/yacc.y"
+#line 401 "../queryparser/yacc.y"
        {
          //TODO:外键没有类型信息
          //  $$ = new AttrInfo();
@@ -1985,135 +2049,135 @@ yyreduce:
 	      //  $$->primary = false;
 	      //  $$->haveIndex = false;
        }
-#line 1989 "y.tab.c"
+#line 2053 "y.tab.c"
     break;
 
   case 43:
-#line 351 "../queryparser/yacc.y"
+#line 415 "../queryparser/yacc.y"
        {
          (yyval.datatype) = new DataType(INT,(yyvsp[0].ivalue));
        }
-#line 1997 "y.tab.c"
+#line 2061 "y.tab.c"
     break;
 
   case 44:
-#line 355 "../queryparser/yacc.y"
+#line 419 "../queryparser/yacc.y"
        {
           (yyval.datatype) = new DataType(STRING,(yyvsp[0].ivalue));
        }
-#line 2005 "y.tab.c"
+#line 2069 "y.tab.c"
     break;
 
   case 45:
-#line 359 "../queryparser/yacc.y"
+#line 423 "../queryparser/yacc.y"
        {
           (yyval.datatype) = new DataType(DATE,8);
        }
-#line 2013 "y.tab.c"
+#line 2077 "y.tab.c"
     break;
 
   case 46:
-#line 363 "../queryparser/yacc.y"
+#line 427 "../queryparser/yacc.y"
        {
           (yyval.datatype) = new DataType(FLOAT,8);
        }
-#line 2021 "y.tab.c"
+#line 2085 "y.tab.c"
     break;
 
   case 47:
-#line 370 "../queryparser/yacc.y"
+#line 434 "../queryparser/yacc.y"
        {
 
        }
-#line 2029 "y.tab.c"
+#line 2093 "y.tab.c"
     break;
 
   case 48:
-#line 374 "../queryparser/yacc.y"
+#line 438 "../queryparser/yacc.y"
        {
 
        }
-#line 2037 "y.tab.c"
+#line 2101 "y.tab.c"
     break;
 
   case 49:
-#line 381 "../queryparser/yacc.y"
+#line 445 "../queryparser/yacc.y"
        {
           (yyval.infolist) = new Lists();
           (yyval.infolist)->valuelists.clear();
           (yyval.infolist)->valuelists.push_back((yyvsp[-1].infolist)->valuelist);
        }
-#line 2047 "y.tab.c"
+#line 2111 "y.tab.c"
     break;
 
   case 50:
-#line 387 "../queryparser/yacc.y"
+#line 451 "../queryparser/yacc.y"
        {
           (yyval.infolist) = (yyvsp[-4].infolist);
           (yyval.infolist)->valuelists.push_back((yyvsp[-1].infolist)->valuelist);
        }
-#line 2056 "y.tab.c"
+#line 2120 "y.tab.c"
     break;
 
   case 51:
-#line 395 "../queryparser/yacc.y"
+#line 459 "../queryparser/yacc.y"
        {
           (yyval.infolist) = new Lists();
           (yyval.infolist)->valuelist.clear();
           (yyval.infolist)->valuelist.push_back((yyvsp[0].valuetype));
        }
-#line 2066 "y.tab.c"
+#line 2130 "y.tab.c"
     break;
 
   case 52:
-#line 401 "../queryparser/yacc.y"
+#line 465 "../queryparser/yacc.y"
        {
           (yyval.infolist) = (yyvsp[-2].infolist);
           (yyval.infolist)->valuelist.push_back((yyvsp[0].valuetype));
        }
-#line 2075 "y.tab.c"
+#line 2139 "y.tab.c"
     break;
 
   case 53:
-#line 409 "../queryparser/yacc.y"
+#line 473 "../queryparser/yacc.y"
        {
          //printf("value int:%d \n",$1);
          int *d = new int;
          *d = (yyvsp[0].ivalue);
          (yyval.valuetype) = new Value(INT,(BufType)d);
        }
-#line 2086 "y.tab.c"
+#line 2150 "y.tab.c"
     break;
 
   case 54:
-#line 416 "../queryparser/yacc.y"
+#line 480 "../queryparser/yacc.y"
        {
           //printf("value float:%f \n",$1);
           double *f = new double;
           *f = (yyvsp[0].fvalue);
 			 (yyval.valuetype) = new Value(FLOAT,(BufType)f);
        }
-#line 2097 "y.tab.c"
+#line 2161 "y.tab.c"
     break;
 
   case 55:
-#line 423 "../queryparser/yacc.y"
+#line 487 "../queryparser/yacc.y"
        {
           (yyval.valuetype) = new Value(STRING,(BufType)(yyvsp[0].string));
        }
-#line 2105 "y.tab.c"
+#line 2169 "y.tab.c"
     break;
 
   case 56:
-#line 427 "../queryparser/yacc.y"
+#line 491 "../queryparser/yacc.y"
        {
           (yyval.valuetype) = new Value(DNULL,nullptr);
        }
-#line 2113 "y.tab.c"
+#line 2177 "y.tab.c"
     break;
 
   case 57:
-#line 434 "../queryparser/yacc.y"
+#line 498 "../queryparser/yacc.y"
        {
           (yyval.relation) = new Relation();
           (yyval.relation)->table1 = (yyvsp[-2].tcol)->tablename;
@@ -2123,11 +2187,11 @@ yyreduce:
           (yyval.relation)->value = (yyvsp[0].valuetype);
           (yyval.relation)->op = (yyvsp[-1].compop);
        }
-#line 2127 "y.tab.c"
+#line 2191 "y.tab.c"
     break;
 
   case 58:
-#line 444 "../queryparser/yacc.y"
+#line 508 "../queryparser/yacc.y"
        {
           (yyval.relation) = new Relation();
           (yyval.relation)->table1 = (yyvsp[-2].tcol)->tablename;
@@ -2137,11 +2201,11 @@ yyreduce:
           (yyval.relation)->value = new Value(DNULL,nullptr);
           (yyval.relation)->op = (yyvsp[-1].compop);
        }
-#line 2141 "y.tab.c"
+#line 2205 "y.tab.c"
     break;
 
   case 59:
-#line 454 "../queryparser/yacc.y"
+#line 518 "../queryparser/yacc.y"
        {
           (yyval.relation) = new Relation();
           (yyval.relation)->table1 = (yyvsp[-3].tcol)->tablename;
@@ -2151,11 +2215,11 @@ yyreduce:
           (yyval.relation)->value = new Value(DNULL,nullptr);
           (yyval.relation)->op = CompOp::IS_NOT_NULL;
        }
-#line 2155 "y.tab.c"
+#line 2219 "y.tab.c"
     break;
 
   case 60:
-#line 464 "../queryparser/yacc.y"
+#line 528 "../queryparser/yacc.y"
        {
           (yyval.relation) = new Relation();
           (yyval.relation)->table1 = (yyvsp[-2].tcol)->tablename;
@@ -2165,81 +2229,81 @@ yyreduce:
           (yyval.relation)->value = new Value(DNULL,nullptr);
           (yyval.relation)->op = CompOp::IS_NULL;
        }
-#line 2169 "y.tab.c"
+#line 2233 "y.tab.c"
     break;
 
   case 61:
-#line 476 "../queryparser/yacc.y"
+#line 540 "../queryparser/yacc.y"
        {
          (yyval.infolist) = new Lists();
          (yyval.infolist)->relations.push_back((yyvsp[0].relation));
        }
-#line 2178 "y.tab.c"
+#line 2242 "y.tab.c"
     break;
 
   case 62:
-#line 481 "../queryparser/yacc.y"
+#line 545 "../queryparser/yacc.y"
        {
           (yyval.infolist) = (yyvsp[-2].infolist);
           (yyval.infolist)->relations.push_back((yyvsp[0].relation));
        }
-#line 2187 "y.tab.c"
+#line 2251 "y.tab.c"
     break;
 
   case 63:
-#line 489 "../queryparser/yacc.y"
+#line 553 "../queryparser/yacc.y"
        {
           (yyval.tcol) = new Tcol("",(yyvsp[0].string));
        }
-#line 2195 "y.tab.c"
+#line 2259 "y.tab.c"
     break;
 
   case 64:
-#line 493 "../queryparser/yacc.y"
+#line 557 "../queryparser/yacc.y"
        {
           (yyval.tcol) = new Tcol((yyvsp[-2].string),(yyvsp[0].string));
        }
-#line 2203 "y.tab.c"
+#line 2267 "y.tab.c"
     break;
 
   case 65:
-#line 498 "../queryparser/yacc.y"
+#line 562 "../queryparser/yacc.y"
        {(yyval.compop) = CompOp::EQ_OP;}
-#line 2209 "y.tab.c"
+#line 2273 "y.tab.c"
     break;
 
   case 66:
-#line 499 "../queryparser/yacc.y"
+#line 563 "../queryparser/yacc.y"
        {(yyval.compop) = CompOp::GT_OP;}
-#line 2215 "y.tab.c"
+#line 2279 "y.tab.c"
     break;
 
   case 67:
-#line 500 "../queryparser/yacc.y"
+#line 564 "../queryparser/yacc.y"
        {(yyval.compop) = CompOp::LT_OP;}
-#line 2221 "y.tab.c"
+#line 2285 "y.tab.c"
     break;
 
   case 68:
-#line 501 "../queryparser/yacc.y"
+#line 565 "../queryparser/yacc.y"
        {(yyval.compop) = CompOp::GE_OP;}
-#line 2227 "y.tab.c"
+#line 2291 "y.tab.c"
     break;
 
   case 69:
-#line 502 "../queryparser/yacc.y"
+#line 566 "../queryparser/yacc.y"
        {(yyval.compop) = CompOp::LE_OP;}
-#line 2233 "y.tab.c"
+#line 2297 "y.tab.c"
     break;
 
   case 70:
-#line 503 "../queryparser/yacc.y"
+#line 567 "../queryparser/yacc.y"
        {(yyval.compop) = CompOp::NE_OP;}
-#line 2239 "y.tab.c"
+#line 2303 "y.tab.c"
     break;
 
   case 71:
-#line 507 "../queryparser/yacc.y"
+#line 571 "../queryparser/yacc.y"
        {
           (yyval.assigns) = new Assigns();
           (yyval.assigns)->attrs.push_back((yyvsp[-2].string));
@@ -2250,11 +2314,11 @@ yyreduce:
              (yyval.assigns)->assignnull.push_back(false);
           }
        }
-#line 2254 "y.tab.c"
+#line 2318 "y.tab.c"
     break;
 
   case 72:
-#line 518 "../queryparser/yacc.y"
+#line 582 "../queryparser/yacc.y"
        {
           (yyval.assigns) = (yyvsp[-4].assigns);
           (yyval.assigns)->attrs.push_back((yyvsp[-2].string));
@@ -2265,74 +2329,74 @@ yyreduce:
              (yyval.assigns)->assignnull.push_back(false);
           }
        }
-#line 2269 "y.tab.c"
+#line 2333 "y.tab.c"
     break;
 
   case 73:
-#line 532 "../queryparser/yacc.y"
+#line 596 "../queryparser/yacc.y"
        {
           (yyval.infolist) = new Lists();
           (yyval.infolist)->collist.push_back(new Tcol("","*"));
        }
-#line 2278 "y.tab.c"
+#line 2342 "y.tab.c"
     break;
 
   case 74:
-#line 537 "../queryparser/yacc.y"
+#line 601 "../queryparser/yacc.y"
        {
           (yyval.infolist) = new Lists();
           (yyval.infolist)->collist.push_back((yyvsp[0].tcol));
        }
-#line 2287 "y.tab.c"
+#line 2351 "y.tab.c"
     break;
 
   case 75:
-#line 542 "../queryparser/yacc.y"
+#line 606 "../queryparser/yacc.y"
        {
           (yyval.infolist) = (yyvsp[-2].infolist);
           (yyval.infolist)->collist.push_back((yyvsp[0].tcol));
        }
-#line 2296 "y.tab.c"
+#line 2360 "y.tab.c"
     break;
 
   case 76:
-#line 550 "../queryparser/yacc.y"
+#line 614 "../queryparser/yacc.y"
        {
          (yyval.infolist) = new Lists();
          (yyval.infolist)->namelist.push_back((yyvsp[0].string));
        }
-#line 2305 "y.tab.c"
+#line 2369 "y.tab.c"
     break;
 
   case 77:
-#line 555 "../queryparser/yacc.y"
+#line 619 "../queryparser/yacc.y"
        {
           (yyval.infolist) = (yyvsp[-2].infolist);
           (yyval.infolist)->namelist.push_back((yyvsp[0].string));
        }
-#line 2314 "y.tab.c"
+#line 2378 "y.tab.c"
     break;
 
   case 78:
-#line 563 "../queryparser/yacc.y"
+#line 627 "../queryparser/yacc.y"
        {
          (yyval.infolist) = new Lists();
          (yyval.infolist)->namelist.push_back((yyvsp[0].string));
        }
-#line 2323 "y.tab.c"
+#line 2387 "y.tab.c"
     break;
 
   case 79:
-#line 568 "../queryparser/yacc.y"
+#line 632 "../queryparser/yacc.y"
        {
           (yyval.infolist) = (yyvsp[-2].infolist);
           (yyval.infolist)->namelist.push_back((yyvsp[0].string));
        }
-#line 2332 "y.tab.c"
+#line 2396 "y.tab.c"
     break;
 
 
-#line 2336 "y.tab.c"
+#line 2400 "y.tab.c"
 
       default: break;
     }
@@ -2564,7 +2628,7 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 580 "../queryparser/yacc.y"
+#line 644 "../queryparser/yacc.y"
 
 
 void yyerror(const char *msg) {

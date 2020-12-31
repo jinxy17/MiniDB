@@ -16,7 +16,12 @@
 8. ~~UPDATE需要实现支持多列修改~~
 9. char不能建表 ？
 10. 列应该改为默认NOT NULL
-11. 长度的处理
+11. 数据长度的处理
 12. varchar那个正则表达式在说什么?
 13. 支持default值为NULL?
 14. 不带小数点的float会被处理成int->类型转换(ql部分已加上,sys部分需要添加)
+
+#### Bug修复
+1. _indexes没有保存到meta
+2. 添加多列索引时应该只为没有建立索引的列调用_createIndex
+3. Alter Col时出现Segmentation fault
