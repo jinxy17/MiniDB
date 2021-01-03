@@ -1,5 +1,5 @@
 src = ../filesystem/pf.o ../idxmgr/IndexManager.o ../idxmgr/SIndexManager.o ../sysmgr/SysManager.o ../queryparser/DataOperater.o ../queryparser/Executer.o
-CXXFLAGS = -std=c++11
+CXXFLAGS = -std=c++17
 all: main
 # testfilesystem testrecmgr testidxmgr testsysmgr create_rec examine_rec
 # testfilesystem: testfilesystem.o $(src)

@@ -558,7 +558,7 @@ void SysManager::AddForeignKey(const string tableName, const vector<string> attr
 		fprintf(stderr, "Error: should cover all primary keys!\n");
 		return;
 	}
-	if (_tables[refID].foreignSet.find(tableName) != _tables[refID].foreignSet.end()) {
+	if (_tables[tableID].foreignSet.find(refName) != _tables[tableID].foreignSet.end()) {
 		fprintf(stderr, "Error: foreign keys already exists!\n");
 		return;
 	}
@@ -570,7 +570,7 @@ void SysManager::AddForeignKey(const string tableName, const vector<string> attr
 	for (int i = 0; i < keyNum; i++) {
 		attrIDs.push_back(_fromNameToID(attrs[i], tableID));
 		foreignIDs.push_back(_fromNameToID(foreigns[i], refID));
-		cout << attrIDs[i] << " " << foreignIDs[i] << endl;
+		// cout << attrIDs[i] << " " << foreignIDs[i] << endl;
 		if (attrIDs[i] == -1 || foreignIDs[i] == -1) {
 			fprintf(stderr, "Error: invalid columns!\n");
 			return;
@@ -608,12 +608,12 @@ void SysManager::AddForeignKey(const string tableName, const vector<string> attr
 			pos += (_tables[tableID].attrs[attr].attrLength >> 2);
 		}
 		// debug
-		for (int k = 0; k < 32; k++) {
-			char cc = *((char *)refData + k);
-			if (cc >= 32 && cc <= 126) cout << cc;
-			else cout << "*";
-		}
-		cout << endl;
+		// for (int k = 0; k < 32; k++) {
+		// 	char cc = *((char *)refData + k);
+		// 	if (cc >= 32 && cc <= 126) cout << cc;
+		// 	else cout << "*";
+		// }
+		// cout << endl;
 		bool check = sixm->Exists(refData);
 		if (!check) {
 			//cout << (char*)refData << endl;
@@ -637,8 +637,8 @@ void SysManager::AddForeignKey(const string tableName, const vector<string> attr
 		_tables[tableID].attrs[attrIDs[i]].reference = refName;
 		_tables[tableID].attrs[attrIDs[i]].foreignKeyName = _tables[refID].attrs[foreignIDs[i]].attrName;
 	}
-	_tables[refID].foreignSet.insert(tableName);
-	_tables[refID].foreign.push_back(tableName);
+	_tables[tableID].foreignSet.insert(refName);
+	_tables[tableID].foreign.push_back(refName);
 
 }
 
@@ -653,13 +653,13 @@ void SysManager::DropForeignKey(const string tableName, string refName) { // ref
 		fprintf(stderr, "Error: invalid reference table!\n");
 		return;
 	}
-	if (_tables[refID].foreignSet.find(tableName) == _tables[refID].foreignSet.end()) {
+	if (_tables[tableID].foreignSet.find(refName) == _tables[tableID].foreignSet.end()) {
 		fprintf(stderr, "Error: table does not have the foreign keys!\n");
 		return;
 	}
-	_tables[refID].foreignSet.erase(tableName);
-	for (int i = 0; i < _tables[refID].foreign.size(); i++) if (_tables[refID].foreign[i] == tableName) {
-		_tables[refID].foreign.erase(_tables[refID].foreign.begin() + i);
+	_tables[tableID].foreignSet.erase(refName);
+	for (int i = 0; i < _tables[tableID].foreign.size(); i++) if (_tables[tableID].foreign[i] == refName) {
+		_tables[tableID].foreign.erase(_tables[tableID].foreign.begin() + i);
 		break;
 	}
 	for (int i = 0; i < _tables[tableID].attrNum; i++) if (_tables[tableID].attrs[i].reference == refName) {

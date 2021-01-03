@@ -28,6 +28,5 @@
 
 #### TODO for xyjin
 
-1. foreignSet语义
-2. DATE到INT转换
-3. 改ALTER接口
+1. DATE到INT转换
+2. 改ALTER接口
