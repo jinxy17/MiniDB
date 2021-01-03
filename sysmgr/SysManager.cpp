@@ -117,6 +117,24 @@ void SysManager::OpenDB(const string DBName) {
 			}
 		}
 	}
+	// read _indexes
+	int indexesNum;
+	metain >> indexesNum;
+	for (int i = 0; i < indexesNum; i++) {
+		string indexName;
+		string tableName;
+		metain >> indexName;
+		metain >> tableName;
+		int attrNum;
+		vector<string> attrs;
+		metain >> attrNum;
+		for (int j = 0; j < attrNum; j++) {
+			string attr;
+			metain >> attr;
+			attrs.push_back(attr);
+		}
+		_indexes.insert(pair<string, pair<string, vector<string> > >(indexName, pair<string, vector<string> >(tableName, attrs)));
+	}
 	metain.close();
 	for (int i = 0; i < _tableNum; i++) {
 		int fileID;
@@ -175,6 +193,17 @@ void SysManager::CloseDB() {
 				metaout << "INDEX\n";
 			}
 			metaout << "END\n";
+		}
+	}
+	// write _indexes
+	metaout << _indexes.size() << "\n";
+	for (auto [i, j] : _indexes) {
+		metaout << i << "\n";
+		metaout << j.first << "\n";
+		auto k = j.second;
+		metaout << k.size() << "\n";
+		for (auto l : k) {
+			metaout << l << "\n";
 		}
 	}
 	metaout.close();

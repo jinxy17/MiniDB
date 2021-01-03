@@ -25,3 +25,9 @@
 1. _indexes没有保存到meta
 2. 添加多列索引时应该只为没有建立索引的列调用_createIndex
 3. Alter Col时出现Segmentation fault
+
+#### TODO for xyjin
+
+1. foreignSet语义
+2. DATE到INT转换
+3. 改ALTER接口
