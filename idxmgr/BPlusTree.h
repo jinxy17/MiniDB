@@ -6,6 +6,9 @@
 #define INT 0
 #define FLOAT 1
 #define STRING 2
+#define DATE 3
+#define DNULL 4
+
 // 索引数据页面分区:
 // | isLeaf  | keyNum  | parent  | prev    | next    | offset   | childs | pages | offsets | keys |
 // | 4 Bytes | 4 Bytes | 4 Bytes | 4 Bytes | 4 Bytes | 12 Bytes | 8160 Bytes                      |

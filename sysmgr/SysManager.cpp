@@ -21,12 +21,14 @@ void SysManager::Show() {
 		for (int attrID = 0; attrID < _tables[tableID].attrNum; attrID++) {
 			cout << _tables[tableID].attrs[attrID].attrName << " ";
 			if (_tables[tableID].attrs[attrID].attrType == INT) cout << "INT";
+			else if (_tables[tableID].attrs[attrID].attrType == DATE) cout << "DATE";
 			else if (_tables[tableID].attrs[attrID].attrType == FLOAT) cout << "FLOAT";
 			else if (_tables[tableID].attrs[attrID].attrType == STRING) cout << "CHAR(" << _tables[tableID].attrs[attrID].attrLength << ")";
 			if (_tables[tableID].attrs[attrID].notNull) cout << " NOT NULL";
 			if (_tables[tableID].attrs[attrID].primary) cout << " PRIMARY KEY";
 			if (_tables[tableID].attrs[attrID].defaultValue != nullptr) {
 				if (_tables[tableID].attrs[attrID].attrType == INT) cout << " DEFAULT " << *(int*)_tables[tableID].attrs[attrID].defaultValue;
+				else if (_tables[tableID].attrs[attrID].attrType == DATE) cout << " DEFAULT " << *(int*)_tables[tableID].attrs[attrID].defaultValue;
 				else if (_tables[tableID].attrs[attrID].attrType == FLOAT) cout << " DEFAULT " << *(double*)_tables[tableID].attrs[attrID].defaultValue;
 				else if (_tables[tableID].attrs[attrID].attrType == STRING) cout << " DEFAULT '" << (char*)_tables[tableID].attrs[attrID].defaultValue << "'";
 			}
@@ -73,6 +75,9 @@ void SysManager::OpenDB(const string DBName) {
 			if (str == "INT") {
 				_tables[i].attrs[j].attrType = INT;
 				_tables[i].attrs[j].attrLength = 4;
+			} else if (str == "DATE") {
+				_tables[i].attrs[j].attrType = DATE;
+				_tables[i].attrs[j].attrLength = 4;
 			} else if (str == "STRING") {
 				_tables[i].attrs[j].attrType = STRING;
 				metain >> _tables[i].attrs[j].attrLength;
@@ -89,6 +94,9 @@ void SysManager::OpenDB(const string DBName) {
 					_tables[i].primary.push_back(j);
 				} else if (str == "DEFAULT") {
 					if (_tables[i].attrs[j].attrType == INT) {
+						int *d = new int; metain >> *d;
+						_tables[i].attrs[j].defaultValue = (BufType)d;
+					} else if (_tables[i].attrs[j].attrType == DATE) {
 						int *d = new int; metain >> *d;
 						_tables[i].attrs[j].defaultValue = (BufType)d;
 					} else if (_tables[i].attrs[j].attrType == STRING) {
@@ -161,6 +169,8 @@ void SysManager::CloseDB() {
 			metaout << _tables[i].attrs[j].offset << "\n";
 			if (_tables[i].attrs[j].attrType == INT) {
 				metaout << "INT\n";
+			} else if (_tables[i].attrs[j].attrType == DATE) {
+				metaout << "DATE\n";
 			} else if (_tables[i].attrs[j].attrType == STRING) {
 				metaout << "STRING\n";
 				metaout << _tables[i].attrs[j].attrLength << "\n";
@@ -176,6 +186,9 @@ void SysManager::CloseDB() {
 			if (_tables[i].attrs[j].defaultValue != nullptr) {
 				metaout << "DEFAULT\n";
 				if (_tables[i].attrs[j].attrType == INT) {
+					metaout << *((int*)_tables[i].attrs[j].defaultValue) << "\n";
+					delete (int*)_tables[i].attrs[j].defaultValue;
+				} else if (_tables[i].attrs[j].attrType == DATE) {
 					metaout << *((int*)_tables[i].attrs[j].defaultValue) << "\n";
 					delete (int*)_tables[i].attrs[j].defaultValue;
 				} else if (_tables[i].attrs[j].attrType == STRING) {
@@ -229,6 +242,8 @@ void SysManager::CreateTable(TableInfo* table) {
 		table->attrs[i].offset = recordSize >> 2;
 		if (table->attrs[i].attrType == INT) {
 			table->attrs[i].attrLength = 4;
+		} else if (table->attrs[i].attrType == DATE) {
+			table->attrs[i].attrLength = 4;
 		} else if (table->attrs[i].attrType == FLOAT) {
 			table->attrs[i].attrLength = 8;
 		}
@@ -240,6 +255,8 @@ void SysManager::CreateTable(TableInfo* table) {
 		}
 		if (table->attrs[i].defaultValue != nullptr) {
 			if (table->attrs[i].attrType == INT) {
+				table->attrs[i].defaultValue = (BufType)new int(*(int *)table->attrs[i].defaultValue);
+			} else if (table->attrs[i].attrType == DATE) {
 				table->attrs[i].defaultValue = (BufType)new int(*(int *)table->attrs[i].defaultValue);
 			} else if (table->attrs[i].attrType == STRING) {
 				BufType temp = (BufType)(new char[table->attrs[i].attrLength]);
@@ -680,12 +697,16 @@ void SysManager::AddColumn(const string tableName, AttrInfo attr) {
 	attr.reference = attr.foreignKeyName = "";
 	if (attr.attrType == INT) {
 		attr.attrLength = 4;
+	} else if (attr.attrType == DATE) {
+		attr.attrLength = 4;
 	} else if (attr.attrType == FLOAT) {
 		attr.attrLength = 8;
 	}
 	while (attr.attrLength % 4 != 0) attr.attrLength++;
 	if (attr.defaultValue != nullptr) {
 		if (attr.attrType == INT) {
+			attr.defaultValue = (BufType)new int(*(int *)attr.defaultValue);
+		} else if (attr.attrType == DATE) {
 			attr.defaultValue = (BufType)new int(*(int *)attr.defaultValue);
 		} else if (attr.attrType == STRING) {
 			BufType temp = (BufType)(new char[attr.attrLength]);
