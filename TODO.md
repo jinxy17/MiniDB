@@ -28,5 +28,4 @@
 
 #### TODO for xyjin
 
-1. DATE到INT转换
-2. 改ALTER接口
+1. 改ALTER接口

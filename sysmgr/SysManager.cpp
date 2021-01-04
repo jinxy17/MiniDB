@@ -855,6 +855,39 @@ void SysManager::DropColumn(const string tableName, string attrName) {
 	}
 }
 
+void SysManager::RenameColumn(const string tableName, string oldAttrName, string newAttrName) {
+	int tableID = _fromNameToID(tableName);
+	if (tableID == -1) {
+		fprintf(stderr, "Error: invalid table!\n");
+		return;
+	}
+	int attrID = _fromNameToID(oldAttrName, tableID);
+	if (attrID == -1) {
+		fprintf(stderr, "Error: invalid column!\n");
+		return;
+	}
+	if (_tables[tableID].attrs[attrID].primary) {
+		fprintf(stderr, "Error: cannot rename primary keys!\n");
+		return;
+	}
+	_tables[tableID].attrs[attrID].attrName = newAttrName;
+	if (_tables[tableID].attrs[attrID].haveIndex) {
+		_tables[tableID].attrs[attrID].haveIndex = false;
+		system(("rm " + tableName + "." + oldAttrName).c_str()); // delete old index
+		_CreateIndex(tableName, newAttrName);
+	}
+	for (auto [i, j] : _indexes) {
+		if (j.first == tableName) {
+			for (int k = 0; k < j.second.size(); k++) {
+				if (j.second[k] == oldAttrName) {
+					_indexes[i].second[k] = newAttrName;
+				}
+			}
+		}
+	}
+}
+
+
 bool SysManager::_checkForeignKeyOnTable(int tableID) {
 	string tableName = _tables[tableID].tableName;
 	for (int i = 0; i < _tableNum; i++) if (i != tableID) {

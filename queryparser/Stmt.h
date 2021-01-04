@@ -25,7 +25,7 @@ struct Tcol {
 struct Lists{
     vector<AttrInfo*> attrinfos;
     vector<Value*> valuelist;
-    vector<vector<Value*>> valuelists;
+    vector<vector<Value*> > valuelists;
     vector<string> namelist;
     vector<Tcol*> collist; 
     vector<Relation*> relations;
@@ -116,7 +116,7 @@ public:
     Type tbType;
 
     TableInfo* tableInfo;           // only for CREATE TABLE
-    vector<vector<Value*>> datas;   // valueLists
+    vector<vector<Value*> > datas;   // valueLists
     Assigns* assigns;                // setClause
     vector<Relation*> relations;    // whereClause
     

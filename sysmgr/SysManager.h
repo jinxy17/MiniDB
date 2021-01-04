@@ -58,6 +58,7 @@ public:
 	void DropForeignKey(const string tableName, string refName);
 	void AddColumn(const string tableName, AttrInfo attr);
 	void DropColumn(const string tableName, string attrName);
+	void RenameColumn(const string tableName, string oldAttrName, string newAttrName);
 	
 	void _CreateIndex(const string tableName, const string attr);
 	void _DropIndex(const string tableName, const string attr);

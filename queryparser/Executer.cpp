@@ -79,7 +79,7 @@ void Executer::execDbStmt(dbStmt *stmt)
             if(fp == NULL) {
                 printf("Error occured when write into meta.db\n");
             }else {
-                fprintf(fp,"0\n");
+                fprintf(fp,"0\n0\n");
                 fclose(fp);
                 printf("Create database: %s \n",stmt->dbName.c_str());
             }
