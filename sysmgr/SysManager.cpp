@@ -55,6 +55,9 @@ void SysManager::OpenDB(const string DBName) {
 	for (int i = 0; i < _tableNum; i++) {
 		_tables.push_back(TableInfo());
 		metain >> _tables[i].tableName;
+		// metain >> _tables[i].pkName;
+		getline(metain, _tables[i].pkName);
+		getline(metain, _tables[i].pkName);
 		metain >> _tables[i].attrNum;
 		metain >> _tables[i].foreignNum;
 		_tables[i].attrs.clear();
@@ -160,6 +163,7 @@ void SysManager::CloseDB() {
 	metaout << _tableNum << "\n";
 	for (int i = 0; i < _tableNum; i++) {
 		metaout << _tables[i].tableName << "\n";
+		metaout << _tables[i].pkName << "\n";
 		metaout << _tables[i].attrNum << "\n";
 		metaout << _tables[i].foreignNum << "\n";
 		metaout << _tables[i].recordSize << "\n";
@@ -461,7 +465,7 @@ void SysManager::DropIndex(const string idxName) {
 	_indexes.erase(it);
 }
 
-void SysManager::AddPrimaryKey(const string tableName, const vector<string> attrs) {
+void SysManager::AddPrimaryKey(const string tableName, const vector<string> attrs, const string pkName) {
 	int tableID = _fromNameToID(tableName);
 	if (tableID == -1) {
 		fprintf(stderr, "Error: invalid table!\n");
@@ -534,14 +538,19 @@ void SysManager::AddPrimaryKey(const string tableName, const vector<string> attr
 	delete rm;
 	delete sixm;
 	_ixm->CloseIndex(indexID);
+	_tables[tableID].pkName = pkName;
 
 
 }
 
-void SysManager::DropPrimaryKey(const string tableName) {
+void SysManager::DropPrimaryKey(const string tableName, const string pkName) {
 	int tableID = _fromNameToID(tableName);
 	if (tableID == -1) {
 		fprintf(stderr, "Error: invalid table!\n");
+		return;
+	}
+	if (pkName != "" && _tables[tableID].pkName != pkName) {
+		fprintf(stderr, "Error: wrong primary key name!\n");
 		return;
 	}
 	if (_tables[tableID].primary.size() == 0) {

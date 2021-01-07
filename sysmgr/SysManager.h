@@ -26,6 +26,7 @@ struct AttrInfo {
 
 struct TableInfo {
 	string tableName;
+	string pkName;
 	int attrNum, foreignNum; // foreignNum completed by SM
 	int recordSize, primarySize; // bytes, completed by SM
 	vector<int> primary; // completed by SM
@@ -52,8 +53,8 @@ public:
 	void CreateIndex(const string idxName, const string tableName, const vector<string> attrs);
 	void AddIndex(const string idxName, const vector<string> attrs);
 	void DropIndex(const string idxName);
-	void AddPrimaryKey(const string tableName, const vector<string> attrs);
-	void DropPrimaryKey(const string tableName);
+	void AddPrimaryKey(const string tableName, const vector<string> attrs, const string pkName = "");
+	void DropPrimaryKey(const string tableName, const string pkName = "");
 	void AddForeignKey(const string tableName, const vector<string> attrs, const string refName, const vector<string> foreigns);
 	void DropForeignKey(const string tableName, string refName);
 	void AddColumn(const string tableName, AttrInfo attr);
