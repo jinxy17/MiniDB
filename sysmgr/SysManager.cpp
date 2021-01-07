@@ -887,6 +887,133 @@ void SysManager::RenameColumn(const string tableName, string oldAttrName, string
 	}
 }
 
+void SysManager::ChangeColumn(const string tableName, string oldAttrName, AttrInfo newAttr) {
+	int tableID = _fromNameToID(tableName);
+	if (tableID == -1) {
+		fprintf(stderr, "Error: invalid table!\n");
+		return;
+	}
+	int attrID = _fromNameToID(oldAttrName, tableID);
+	if (attrID == -1) {
+		fprintf(stderr, "Error: invalid column!\n");
+		return;
+	}
+	if (_tables[tableID].attrs[attrID].primary || _tables[tableID].attrs[attrID].reference != "") {
+		fprintf(stderr, "Error: cannot change primary keys or foreign keys!\n");
+		return;
+	}
+	// pre-process newAttr
+	newAttr.haveIndex = false;
+	newAttr.notNull = true;
+	newAttr.primary = false;
+	newAttr.reference = newAttr.foreignKeyName = "";
+	if (newAttr.attrType == INT) {
+		newAttr.attrLength = 4;
+	} else if (newAttr.attrType == DATE) {
+		newAttr.attrLength = 4;
+	} else if (newAttr.attrType == FLOAT) {
+		newAttr.attrLength = 8;
+	}
+	while (newAttr.attrLength % 4 != 0) newAttr.attrLength++;
+	if (newAttr.defaultValue != nullptr) {
+		if (newAttr.attrType == INT) {
+			newAttr.defaultValue = (BufType)new int(*(int *)newAttr.defaultValue);
+		} else if (newAttr.attrType == DATE) {
+			newAttr.defaultValue = (BufType)new int(*(int *)newAttr.defaultValue);
+		} else if (newAttr.attrType == STRING) {
+			BufType temp = (BufType)(new char[newAttr.attrLength]);
+			strcpy((char*)temp, (char*)newAttr.defaultValue);
+			newAttr.defaultValue = temp;
+		} else if (newAttr.attrType == FLOAT) {
+			newAttr.defaultValue = (BufType)new double(*(double *)newAttr.defaultValue);
+		}
+	}
+
+	AttrInfo & oldAttr = _tables[tableID].attrs[attrID];
+	int recordSize = _tables[tableID].recordSize;
+	int newRecordSize = recordSize - oldAttr.attrLength + newAttr.attrLength;
+	newAttr.offset = oldAttr.offset;
+	system(("rm " + tableName + ".*").c_str()); // delete index (including primary)
+	fileManager->createFile((tableName + ".backup.temp").c_str());
+	int fileID = _tableFileID[tableName];
+	int newFileID;
+	fileManager->openFile((tableName + ".backup.temp").c_str(), newFileID);
+	
+	RecManager * rm = new RecManager(bufPageManager, fileID, recordSize, false);
+	RecManager * newrm = new RecManager(bufPageManager, newFileID, newRecordSize, true);
+	RecManager::Iterator * iter = new RecManager::Iterator(rm);
+	int attrNum = _tables[tableID].attrNum;
+	int off = (newAttr.attrLength - oldAttr.attrLength) >> 2;
+	for (int i = attrID + 1; i < attrNum; i++) {
+		_tables[tableID].attrs[i].offset += off;
+	}
+	BufType data;
+	unsigned int id;
+	while (iter->next(data, id)) {
+		int pageID = id >> 16;
+		int slotID = (id << 16 >> 16);
+		BufType newData = new unsigned int[newRecordSize >> 2];
+		memcpy((char*)newData, (char*)data, (oldAttr.offset << 2));
+		if (newAttr.attrType == STRING) {
+			if (oldAttr.attrType == STRING) {
+				sprintf((char*)newData + (oldAttr.offset << 2), "%s", (char*)&data[oldAttr.offset]); 
+			} else if (oldAttr.attrType == INT || oldAttr.attrType == DATE) {
+				sprintf((char*)newData + (oldAttr.offset << 2), "%d", *(int*)&data[oldAttr.offset]); 
+			} else { // oldAttr.attrType == FLOAT
+				sprintf((char*)newData + (oldAttr.offset << 2), "%f", *(double*)&data[oldAttr.offset]); 
+			}
+		} else if (newAttr.attrType == INT || newAttr.attrType == DATE) {
+			if (oldAttr.attrType == STRING) {
+				*(int*)&newData[oldAttr.offset] = stoi((char*)&data[oldAttr.offset]);
+				cout << *(int*)&newData[oldAttr.offset] << endl;
+			} else if (oldAttr.attrType == INT || oldAttr.attrType == DATE) {
+				*(int*)&newData[oldAttr.offset] = *(int*)&data[oldAttr.offset];
+			} else { // oldAttr.attrType == FLOAT
+				*(int*)&newData[oldAttr.offset] = *(double*)&data[oldAttr.offset];
+			}
+		} else { // newAttr.attrType == FLOAT
+			if (oldAttr.attrType == STRING) {
+				*(double*)&newData[oldAttr.offset] = stof((char*)&data[oldAttr.offset]);
+			} else if (oldAttr.attrType == INT || oldAttr.attrType == DATE) {
+				*(double*)&newData[oldAttr.offset] = *(int*)&data[oldAttr.offset];
+			} else { // oldAttr.attrType == FLOAT
+				*(double*)&newData[oldAttr.offset] = *(double*)&data[oldAttr.offset];
+			}
+		}
+		memcpy((char*)newData + (oldAttr.offset << 2) + newAttr.attrLength, 
+			   (char*)data + (oldAttr.offset << 2) + oldAttr.attrLength,
+			   recordSize - (oldAttr.offset << 2) - oldAttr.attrLength);
+		newrm->insertRec(newData, id);
+		delete [] newData;
+	}
+	delete iter;
+	delete newrm;
+	delete rm;
+	fileManager->closeFile(newFileID);
+	fileManager->closeFile(fileID);
+
+	system(("rm " + tableName).c_str());
+	system(("mv " + tableName + ".backup.temp " + tableName).c_str());
+	fileManager->openFile(tableName.c_str(), newFileID);
+	_tableFileID[tableName] = newFileID;
+	_tables[tableID].recordSize = newRecordSize;
+	_tables[tableID].attrs[attrID] = newAttr;
+	for (int i = 0; i < _tables[tableID].attrNum; i++) if (_tables[tableID].attrs[i].haveIndex) {
+		string attr = _tables[tableID].attrs[i].attrName;
+		_tables[tableID].attrs[i].haveIndex = false;
+		_CreateIndex(tableName, attr);
+	}
+	vector<string> attrs;
+	if (_tables[tableID].primary.size() != 0) {
+		attrs.clear();
+		for (int i = 0; i < _tables[tableID].attrNum; i++) if (_tables[tableID].attrs[i].primary) {
+			attrs.push_back(_tables[tableID].attrs[i].attrName);
+		}
+		_tables[tableID].primary.clear();
+		_tables[tableID].primarySize = 0;
+		AddPrimaryKey(tableName, attrs);
+	}
+}
 
 bool SysManager::_checkForeignKeyOnTable(int tableID) {
 	string tableName = _tables[tableID].tableName;
