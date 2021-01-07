@@ -12,6 +12,18 @@ enum CompOp {
 	NO_OP, EQ_OP, NE_OP, LT_OP, GT_OP, LE_OP, GE_OP, IS_NULL, IS_NOT_NULL
 };
 
+struct DataType {
+    int dtype;
+    int setlength;
+    DataType(int _dtype,int _setlength):dtype(_dtype),setlength(_setlength){};
+};
+
+struct Tcol {
+    string tablename;
+    string colname;
+    Tcol(string _tablename,string _colname):tablename(_tablename),colname(_colname){};
+};
+
 struct Value {
     int datatype;
     BufType data;
@@ -56,7 +68,7 @@ public:
 	void Update(const Assigns assigns, vector<Relation*> relations);
 	void Delete(const string tableName, vector<Relation*> relations);
 	void Select(const string tableName, vector<Relation*> relations, vector<string> attrNames);
-	void Select(string tableName1, string tableName2, vector<Relation*> relations, vector<string> attrNames);
+	void Select(vector<string> tableNames, vector<Tcol*> cols, vector<Relation *> relations);
 	// void Load(const string tableName, const string fileName);
 
 	bool _compare(BufType data1, BufType data2, CompOp op, int type);

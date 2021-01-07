@@ -9,19 +9,6 @@
 #include "../sysmgr/SysManager.h"
 using namespace std;
 
-struct DataType {
-    int dtype;
-    int setlength;
-    DataType(int _dtype,int _setlength):dtype(_dtype),setlength(_setlength){};
-};
-
-
-struct Tcol {
-    string tablename;
-    string colname;
-    Tcol(string _tablename,string _colname):tablename(_tablename),colname(_colname){};
-};
-
 struct Lists{
     vector<AttrInfo*> attrinfos;
     vector<Value*> valuelist;

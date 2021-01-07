@@ -281,60 +281,47 @@ void Executer::execAlterStmt(alterStmt *stmt)
     {
     case alterStmt::ALTER_ADD:
     {   
-        printf("ALTER add\n");
-        smm->AddColumn(stmt->tbName,*stmt->field);
-        printf("SUCC!\n");
-        //smm->AddColumn(stmt->tbName,*(stmt->field));
+        smm->AddColumn(stmt->tbName,*(stmt->field));
         break;
     }
     case alterStmt::ALTER_DROP:
     {
-        // printf("ALTER drop\n");
         smm->DropColumn(stmt->tbName,stmt->colName);
         break;
     }
     case alterStmt::ALTER_CHANGE:
     {
-        printf("ALTER change\n");
-        /* 没有底层接口 */
+        smm->ChangeColumn(stmt->tbName, stmt->colName, *stmt->field);
         break;
     }
     case alterStmt::ALTER_RENAME:
     {   
-        printf("ALTER rename\n");
-        /* 没有底层接口 */
+        //smm->RenameColumn(stmt->tbName, stmt->newtbName);
         break;
     }
     case alterStmt::ALTER_DROP_PRIMARY:
     {   
-        printf("ALTER drop pri\n");
         smm->DropPrimaryKey(stmt->tbName);
         break;
     }
     case alterStmt::ALTER_ADD_PRIMARY:
     {   
-        printf("ALTER add pri\n");
-        /* 底层接口需要修改 */
+        smm->AddPrimaryKey(stmt->tbName,stmt->collist,stmt->pkName);
         break;
     }
     case alterStmt::ALTER_DROP_PRIMARY_WNAME:
     {   
-        printf("ALTER drop pri with name\n");
-        /* 底层接口需要修改 */
-        // 判断外键名字是否正确?
-        smm->DropPrimaryKey(stmt->tbName);
+        smm->DropPrimaryKey(stmt->tbName, stmt->pkName);
         break;
     }
     case alterStmt::ALTER_ADD_FOREIGN:
     {   
-        printf("ALTER add foreign\n");
-        /* 底层接口需要修改 */
+        smm->AddForeignKey(stmt->tbName,stmt->fkName,stmt->collist,stmt->fktbName,stmt->fkcollist);
         break;
     }
     case alterStmt::ALTER_DROP_FOREIGN_WNAME:
     {   
-        printf("ALTER drop foreign\n");
-        /* 底层接口需要修改 */
+        smm->DropForeignKey(stmt->tbName,stmt->fkName);
         break;
     }
     default:
