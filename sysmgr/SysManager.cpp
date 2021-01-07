@@ -58,6 +58,14 @@ void SysManager::OpenDB(const string DBName) {
 		// metain >> _tables[i].pkName;
 		getline(metain, _tables[i].pkName);
 		getline(metain, _tables[i].pkName);
+		int fkNum;
+		metain >> fkNum;
+		for (int i = 0; i < fkNum; i++) {
+			string fkName, refName;
+			metain >> fkName;
+			metain >> refName;
+			_tables[i].fkNames[fkName] = refName;
+		}
 		metain >> _tables[i].attrNum;
 		metain >> _tables[i].foreignNum;
 		_tables[i].attrs.clear();
@@ -164,6 +172,11 @@ void SysManager::CloseDB() {
 	for (int i = 0; i < _tableNum; i++) {
 		metaout << _tables[i].tableName << "\n";
 		metaout << _tables[i].pkName << "\n";
+		metaout << _tables[i].fkNames.size() << "\n";
+		for (auto [i, j] : _tables[i].fkNames) {
+			metaout << i << "\n";
+			metaout << j << "\n";
+		}
 		metaout << _tables[i].attrNum << "\n";
 		metaout << _tables[i].foreignNum << "\n";
 		metaout << _tables[i].recordSize << "\n";
@@ -569,7 +582,7 @@ void SysManager::DropPrimaryKey(const string tableName, const string pkName) {
 	system((string("rm ") + tableName + string(".primary")).c_str());
 }
 
-void SysManager::AddForeignKey(const string tableName, const vector<string> attrs, const string refName, const vector<string> foreigns) {
+void SysManager::AddForeignKey(const string tableName, const string fkName, const vector<string> attrs, const string refName, const vector<string> foreigns) {
 	int tableID = _fromNameToID(tableName);
 	if (tableID == -1) {
 		fprintf(stderr, "Error: invalid table!\n");
@@ -665,15 +678,21 @@ void SysManager::AddForeignKey(const string tableName, const vector<string> attr
 	}
 	_tables[tableID].foreignSet.insert(refName);
 	_tables[tableID].foreign.push_back(refName);
+	_tables[tableID].fkNames[fkName] = refName;
 
 }
 
-void SysManager::DropForeignKey(const string tableName, string refName) { // refName is a table
+void SysManager::DropForeignKey(const string tableName, const string fkName) { 
 	int tableID = _fromNameToID(tableName);
 	if (tableID == -1) {
 		fprintf(stderr, "Error: invalid table!\n");
 		return;
 	}
+	if (_tables[tableID].fkNames.find(fkName) == _tables[tableID].fkNames.end()) {
+		fprintf(stderr, "Error: wrong foreign key name!\n");
+		return;
+	}
+	string refName = _tables[tableID].fkNames[fkName];
 	int refID = _fromNameToID(refName);
 	if (refID == -1) {
 		fprintf(stderr, "Error: invalid reference table!\n");
@@ -692,6 +711,7 @@ void SysManager::DropForeignKey(const string tableName, string refName) { // ref
 		_tables[tableID].attrs[i].reference = "";
 		_tables[tableID].attrs[i].foreignKeyName = "";
 	}
+	_tables[tableID].fkNames.erase(fkName);
 }
 
 void SysManager::AddColumn(const string tableName, AttrInfo attr) {

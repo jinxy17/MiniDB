@@ -21,10 +21,11 @@ Xuyang JIN
 #define DATA_SIZE (PAGE_SIZE-DATA_OFFSET)
 
 class RecManager {
-	RecManager(BufPageManager * bpm, int fileID, int recSize); 
+	RecManager(BufPageManager * bpm, int fileID, int recSize, bool reset);
 	// bpm: pointer to BufPageManager
 	// fileID: current file id
 	// recSize: size for each rec, in bytes
+	// reset: generate a clean rec / load old rec
 	
 	~RecManager();
 	
@@ -38,6 +39,10 @@ class RecManager {
 	void updateRec(BufType e, unsigned int id);
 	// e: pointer to a rec
 	// id: id of rec to be updated
+	
+	bool GetRec(BufType & e,unsigned int id);
+	// e: reference a rec pointer
+	// id: id of rec to be fetched
 		
 	class Iterator { // nested iterator class
 		Iterator(RecManager * rm); 
@@ -145,19 +150,21 @@ Xuyang JIN
 ```cpp
 struct AttrInfo {
 	string attrName;
-	AttrType attrType;
+	int attrType;
 	int attrLength; // bytes, completed by SM for INTEGER & FLOAT
 	bool notNull;
 	bool primary;
 	BufType defaultValue;
-	string reference;
-	string foreignKeyName;
+	string reference; // table to be referenced
+	string foreignKeyName; // attr to be referenced, must be primary
 	bool haveIndex;
 	int offset; // 4 bytes, completed by SM
 };
 
 struct TableInfo {
 	string tableName;
+	string pkName; // primary key name, defaulted to be ""
+	map<string, string> fkNames; // mapping fkName to refName
 	int attrNum, foreignNum; // foreignNum completed by SM
 	int recordSize, primarySize; // bytes, completed by SM
 	vector<int> primary; // completed by SM
@@ -179,12 +186,14 @@ class SysManager {
 	void CreateIndex(const string idxName, const string tableName, const vector<string> attrs);
 	void AddIndex(const string idxName, const vector<string> attrs);
 	void DropIndex(const string idxName);
-	void AddPrimaryKey(const string tableName, const vector<string> attrs);
-	void DropPrimaryKey(const string tableName);
-	void AddForeignKey(const string tableName, const vector<string> attrs, const string refName, const vector<string> foreigns);
-	void DropForeignKey(const string tableName, string refName);
+	void AddPrimaryKey(const string tableName, const vector<string> attrs, const string pkName = "");
+	void DropPrimaryKey(const string tableName, const string pkName = "");
+	void AddForeignKey(const string tableName, const string fkName, const vector<string> attrs, const string refName, const vector<string> foreigns);
+	void DropForeignKey(const string tableName, const string fkName);
 	void AddColumn(const string tableName, AttrInfo attr);
 	void DropColumn(const string tableName, string attrName);
+	void RenameColumn(const string tableName, string oldAttrName, string newAttrName);
+	void ChangeColumn(const string tableName, string oldAttrName, AttrInfo newAttr);
 };
 ```
 ## Checkpoint 4: Query Parser
