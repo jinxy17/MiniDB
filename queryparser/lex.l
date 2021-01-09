@@ -82,7 +82,7 @@ TO              { return TO;}
 {VALUE_INT}     { sscanf(yytext, "%d", &yylval.ivalue); return VALUE_INT; }
 {VALUE_FLOAT}   { sscanf(yytext, "%f", &yylval.fvalue); return VALUE_FLOAT; }
 {IDENTIFIER}    { yylval.string = get_text(yytext, false); return IDENTIFIER; }
-{VALUE_STRING}  { yylval.string = get_text(yytext, false); return VALUE_STRING; }
+{VALUE_STRING}  { yylval.string = get_text(yytext, true); return VALUE_STRING; }
 {WHITESPACE}    {}
 
 "="             { return EQ; }
