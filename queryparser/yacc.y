@@ -139,9 +139,16 @@ tbStmt:
 			 stmt->tableInfo->tableName = stmt->tbName;
           stmt->tableInfo->recordSize = 0;
           stmt->tableInfo->attrs.clear();
+          stmt->pk = nullptr;
+          stmt->fks.clear();
           //TODO: 添加对PK和FK的处理
           for(int i = 0;i < $5->attrinfos.size();i++) {
-             stmt->tableInfo->attrs.push_back(*$5->attrinfos[i]);
+             if($5->attrinfos[i]->createPk == false && $5->attrinfos[i]->createFk == false)
+               stmt->tableInfo->attrs.push_back(*$5->attrinfos[i]);
+             else if($5->attrinfos[i]->createPk == true)
+               stmt->pk = $5->attrinfos[i];
+             else
+               stmt->fks.push_back($5->attrinfos[i]);
           }
           stmt->tableInfo->attrNum = stmt->tableInfo->attrs.size();
           executer->execTbStmt(stmt);
@@ -222,8 +229,8 @@ idxStmt:
     | DROP INDEX idxName
        {
           idxStmt* stmt = new idxStmt(idxStmt::IDX_DROP);
-          executer->execIdxStmt(stmt);
           stmt->idxName = $3;
+          executer->execIdxStmt(stmt);
           delete stmt;
        }
 	| ALTER TABLE tbName ADD INDEX idxName '(' columnList ')'

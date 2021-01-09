@@ -103,6 +103,9 @@ public:
     Type tbType;
 
     TableInfo* tableInfo;           // only for CREATE TABLE
+    AttrInfo* pk;                   // only for CREATE TABLE
+    vector<AttrInfo*> fks;          // only for CREATE TABLE
+
     vector<vector<Value*> > datas;   // valueLists
     Assigns* assigns;                // setClause
     vector<Relation*> relations;    // whereClause
