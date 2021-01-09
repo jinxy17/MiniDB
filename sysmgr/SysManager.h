@@ -62,6 +62,7 @@ public:
 	void DropColumn(const string tableName, string attrName);
 	void RenameColumn(const string tableName, string oldAttrName, string newAttrName);
 	void ChangeColumn(const string tableName, string oldAttrName, AttrInfo newAttr);
+	void RenameTable(const string tableName, const string newTableName);
 	
 	void _CreateIndex(const string tableName, const string attr);
 	void _DropIndex(const string tableName, const string attr);

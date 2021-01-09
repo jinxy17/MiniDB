@@ -296,7 +296,7 @@ void Executer::execAlterStmt(alterStmt *stmt)
     }
     case alterStmt::ALTER_RENAME:
     {   
-        //smm->RenameColumn(stmt->tbName, stmt->newtbName);
+        smm->RenameTable(stmt->tbName, stmt->newtbName);
         break;
     }
     case alterStmt::ALTER_DROP_PRIMARY:

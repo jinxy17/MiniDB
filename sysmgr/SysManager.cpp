@@ -367,6 +367,13 @@ void SysManager::DropTable(const string tableName) {
 	system(("rm " + _tables[tableID].tableName + ".*").c_str());
 	_tables.erase(_tables.begin() + tableID);
 	_tableNum--;
+	for (auto it = _indexes.begin(); it != _indexes.end(); ) {
+		if (it->second.first == tableName){
+			_indexes.erase(it++);
+		} else {
+			it++;
+		}
+	}
 }
 
 void SysManager::_CreateIndex(const string tableName, const string attr) {
@@ -1041,6 +1048,35 @@ void SysManager::ChangeColumn(const string tableName, string oldAttrName, AttrIn
 		_tables[tableID].primary.clear();
 		_tables[tableID].primarySize = 0;
 		AddPrimaryKey(tableName, attrs);
+	}
+}
+
+void SysManager::RenameTable(const string oldTableName, const string newTableName) {
+	int tableID = _fromNameToID(oldTableName);
+	if (tableID == -1) {
+		fprintf(stderr, "Error: invalid table!\n");
+		return;
+	}
+	if (_checkForeignKeyOnTable(tableID)) {
+		fprintf(stderr, "Error: foreign key on the table!\n");
+		return;
+	}
+	if (fileManager->closeFile(_tableFileID[_tables[tableID].tableName])) {
+		fprintf(stderr, "Error: failed to close table file!\n");
+		return;
+	}
+	char replace[256];
+	sprintf(replace, "for var in %s.*; do mv \"$var\" \"%s.${var##%s.}\"; done", oldTableName.c_str(), newTableName.c_str(), oldTableName.c_str());
+	system(replace);
+	system(("mv " + oldTableName + " " + newTableName).c_str());
+	_tables[tableID].tableName = newTableName;
+	int fileID;
+	fileManager->openFile(newTableName.c_str(), fileID);
+	_tableFileID[newTableName] = fileID;
+	for (auto [i, j] : _indexes) {
+		if (j.first == oldTableName) {
+			_indexes[i].first = newTableName;
+		}
 	}
 }
 
