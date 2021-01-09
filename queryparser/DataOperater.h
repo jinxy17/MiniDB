@@ -72,6 +72,8 @@ public:
 	// void Load(const string tableName, const string fileName);
 
 	bool _compare(BufType data1, BufType data2, CompOp op, int type);
+	void Load(const string tableName,const char* line);
+	
 private:
 	SysManager *_smm;
 	IndexManager *_ixm;

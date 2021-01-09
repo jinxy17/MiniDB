@@ -106,7 +106,7 @@ bool DataOperater::Insert(const string tableName, vector<Value *> insertvalues, 
 		else
 		{
 			//经过检查不允许插入NULL值域(实际上目前代码支持插入NULL),所以理论上不可能进入这里
-			assert(1);
+			assert(0);
 		}
 	}
 	//printf("\n");
@@ -404,7 +404,7 @@ void DataOperater::Update(const Assigns assigns, vector<Relation *> relations)
 			else
 			{
 				//经过检查不允许插入NULL值域(实际上目前代码支持插入NULL),所以理论上不可能进入这里
-				assert(1);
+				assert(0);
 			}
 		}
 
@@ -505,7 +505,7 @@ void DataOperater::Update(const Assigns assigns, vector<Relation *> relations)
 			else
 			{
 				//经过检查不允许插入NULL值域(实际上目前代码支持插入NULL),所以理论上不可能进入这里
-				assert(1);
+				assert(0);
 			}
 			continue;
 		}
@@ -819,7 +819,7 @@ void DataOperater::Delete(const string tableName, vector<Relation *> relations)
 			else
 			{
 				//经过检查不允许插入NULL值域(实际上目前代码支持插入NULL),所以理论上不可能进入这里
-				assert(1);
+				assert(0);
 			}
 			continue;
 		}
@@ -1060,7 +1060,7 @@ void DataOperater::Select(const string tableName, vector<Relation *> relations, 
 			else
 			{
 				//经过检查不允许插入NULL值域(实际上目前代码支持插入NULL),所以理论上不可能进入这里
-				assert(1);
+				assert(0);
 			}
 			continue;
 		}
@@ -1223,12 +1223,10 @@ void DataOperater::Select(const string tableName, vector<Relation *> relations, 
 			if (outcnt <= 100)
 			{
 				putchar('|');
-				//cout << " bitmap: " << bitmap[0] << " |";
 				for (int i = 0; i < attrIDs.size(); i++)
 				{
 					printf(" %s ", attrNames[i].c_str());
 					BufType out = data + _smm->_tables[tableID].attrs[attrIDs[i]].offset;
-					//cout << " " << (bitmap[0] & (1ull << attrIDs[i])) << " ";
 					if ((bitmap[0] & (1ull << attrIDs[i])) == 0)
 					{
 						printf(" NULL |");
@@ -1236,15 +1234,15 @@ void DataOperater::Select(const string tableName, vector<Relation *> relations, 
 					}
 					if (_smm->_tables[tableID].attrs[attrIDs[i]].attrType == INT)
 					{
-						printf(" INT %d ", *(int *)out);
+						printf(" %d ", *(int *)out);
 					}
 					else if (_smm->_tables[tableID].attrs[attrIDs[i]].attrType == FLOAT)
 					{
-						printf(" FLOAT %.6lf ", *(double *)out);
+						printf(" %.6lf ", *(double *)out);
 					}
 					else if (_smm->_tables[tableID].attrs[attrIDs[i]].attrType == STRING)
 					{
-						printf(" STRING %s ", (char *)out);
+						printf(" %s ", (char *)out);
 					}
 					putchar('|');
 				}
@@ -1291,7 +1289,7 @@ void DataOperater::Select(vector<string> tableNames, vector<Tcol *> cols, vector
 	// 	}
 	// 	tableIDs.push_back(tableID);
 	// }
-	
+
 	// vector<pair<int, int>> attrIDs;
 	// for (int i = 0; i < attrNames.size(); i++)
 	// {
@@ -1396,7 +1394,7 @@ void DataOperater::Select(vector<string> tableNames, vector<Tcol *> cols, vector
 	// 		else
 	// 		{
 	// 			//经过检查不允许插入NULL值域(实际上目前代码支持插入NULL),所以理论上不可能进入这里
-	// 			assert(1);
+	// 			assert(0);
 	// 		}
 	// 		continue;
 	// 	}
@@ -1718,53 +1716,61 @@ bool DataOperater::_compare(BufType data1, BufType data2, CompOp op, int type)
 			return *(double *)data1 >= *(double *)data2;
 	}
 	printf("Error Operator in compare\n");
-	assert(1);
+	assert(0);
 	return false;
 }
 
-// void DataOperater::Load(const string tableName, const string fileName) {
-// 	int tableID = _smm->_fromNameToID(tableName);
-// 	if (tableID == -1) {
-// 		fprintf(stderr, "Error: such table does not exist!\n");
-// 		return;
-// 	}
-// 	ifstream load(fileName);
-// 	string str;
-// 	vector<string> attrs;
-// 	for (int i = 0; i < _smm->_tables[tableID].attrNum; i++) {
-// 		attrs.push_back(_smm->_tables[tableID].attrs[i].attrName);
-// 	}
-// 	//cout << tableName << endl;
-// 	cout << "loading ..." << endl;
-// 	//bool flag = false;
-// 	while (getline(load, str)) {
-// 		vector<BufType> values;
-// 		string buf = "";
-// 		int attrCnt = 0;
-// 		for (int i = 0; i < str.length(); i++) {
-// 			if (str[i] == '|') {
-// 				//cout << buf << endl;
-// 				if (_smm->_tables[tableID].attrs[attrCnt].attrType == INT) {
-// 					int *d = new int; *d = atoi(buf.c_str());
-// 					values.push_back((BufType)d);
-// 				} else if (_smm->_tables[tableID].attrs[attrCnt].attrType == FLOAT) {
-// 					double *d = new double; *d = atof(buf.c_str());
-// 					values.push_back((BufType)d);
-// 				} else if (_smm->_tables[tableID].attrs[attrCnt].attrType == STRING) {
-// 					char *d = new char[_smm->_tables[tableID].attrs[attrCnt].attrLength];
-// 					memset(d, 0, sizeof(char) * _smm->_tables[tableID].attrs[attrCnt].attrLength);
-// 					//cout << "char: " << _smm->_tables[tableID].attrs[attrCnt].attrLength << ' ' << buf.length() << endl;
-// 					memcpy(d, buf.c_str(), min(_smm->_tables[tableID].attrs[attrCnt].attrLength, (int)buf.length()));
-// 					values.push_back((BufType)d);
-// 				}
-// 				buf = "";
-// 				attrCnt++;
-// 			} else {
-// 				buf.push_back(str[i]);
-// 			}
-// 		}
-// 		Insert(tableName, attrs, values);
-// 	}
-// 	load.close();
-// 	cout << "done." << endl;
-// }
+void DataOperater::Load(const string tableName, const char *line)
+{
+	int tableID = _smm->_fromNameToID(tableName);
+	vector<AttrInfo> attrsinfos = _smm->_tables[tableID].attrs;
+	vector<Value *> rdata;
+	vector<int> cols;
+	int nullnub = 0;
+
+	char *tmp = strdup(line);
+	char *tok;
+	/* 获取第一个子字符串 */
+	tok = strtok(tmp, "|");
+	vector<char *> tmps;
+	int i = 0;
+	while (tok != NULL)
+	{
+	// 	printf("%d %s\n", i, tok);
+		if(i >= attrsinfos.size()) break;
+		assert(i < attrsinfos.size());
+		if (attrsinfos[i].attrType == INT)
+		{
+			int *vi = new int(atoi(tok));
+			Value *value = new Value(INT, (BufType)vi);
+			rdata.push_back(value);
+			cols.push_back(i);
+		}
+		else if (attrsinfos[i].attrType == FLOAT)
+		{
+			double *vf = new double(atof(tok));
+			Value *value = new Value(FLOAT, (BufType)vf);
+			rdata.push_back(value);
+			cols.push_back(i);
+		}
+		else
+		{
+			char *buftmp = strdup(tok);
+			tmps.push_back(buftmp);
+			Value *value = new Value(STRING, (BufType)buftmp);
+			rdata.push_back(value);
+			cols.push_back(i);
+		}
+		tok = strtok(NULL, "|\n");
+		i++;
+	}
+	Insert(tableName, rdata, cols, nullnub);
+	rdata.clear();
+	cols.clear();
+	free(tmp);
+	for (int j = 0; j < tmps.size(); j++)
+	{
+		free(tmps[j]);
+	}
+	tmps.clear();
+}

@@ -32,8 +32,8 @@ Executer * executer;
 // 重复关键字加前缀KW
 %token KWNULL KWINT KWFLOAT KWDATE
 
-// 添加一个退出关键字
-%token QUIT
+// 添加一个退出关键字,一个LOAD关键字
+%token QUIT LOAD
 %token DATABASE	DATABASES TABLE	TABLES SHOW	CREATE
 %token DROP	USE	PRIMARY	KEY NOT
 %token INSERT INTO VALUES DELETE FROM WHERE
@@ -130,7 +130,15 @@ dbStmt:
     ;
 
 tbStmt:
-      CREATE TABLE tbName '(' fieldList ')'
+      LOAD tbName FROM VALUE_STRING
+       {
+          tbStmt* stmt = new tbStmt(tbStmt::TB_LOAD);
+          stmt->tbName = $2;
+          stmt->filename = $4;
+          executer->execTbStmt(stmt);
+          delete stmt;
+       }
+	 | CREATE TABLE tbName '(' fieldList ')'
        {
           tbStmt* stmt = new tbStmt(tbStmt::TB_CREATE);
           stmt->tbName = $3;
@@ -216,7 +224,7 @@ tbStmt:
 	;
 
 idxStmt:
-	  CREATE INDEX idxName ON tbName '(' columnList ')'
+      CREATE INDEX idxName ON tbName '(' columnList ')'
        {
           idxStmt* stmt = new idxStmt(idxStmt::IDX_CREATE);
           stmt->tbName = $5;

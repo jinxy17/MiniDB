@@ -96,7 +96,7 @@ public:
 class tbStmt :public Stmt {
 public:
     enum Type {
-	    TB_CREATE,TB_DROP,TB_DESC,TB_INSERT,TB_DELETE,TB_UPDATE,TB_SELECT
+	    TB_CREATE,TB_DROP,TB_DESC,TB_INSERT,TB_DELETE,TB_UPDATE,TB_SELECT,TB_LOAD
     };
 
     string tbName;
@@ -112,6 +112,8 @@ public:
     
     vector<Tcol*>   collist;        // selector
     vector<string> tablelist;       // tablelist
+
+    string filename; //for LOAD
 
     tbStmt(Type _tbtype): Stmt(Stmt::TB_STMT) {
         tbType = _tbtype;

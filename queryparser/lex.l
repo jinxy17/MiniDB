@@ -78,6 +78,7 @@ FOREIGN         { return FOREIGN;}
 REFERENCES      { return REFERENCES;}
 ON              { return ON;}
 TO              { return TO;}
+LOAD            { return LOAD;}
 
 {VALUE_INT}     { sscanf(yytext, "%d", &yylval.ivalue); return VALUE_INT; }
 {VALUE_FLOAT}   { sscanf(yytext, "%f", &yylval.fvalue); return VALUE_FLOAT; }

@@ -247,6 +247,23 @@ void Executer::execTbStmt(tbStmt *stmt)
         qlm->Select(stmt->tablelist[0], stmt->relations,attrNames);
         break;
     }
+    case tbStmt::TB_LOAD:{
+        //LOAD CUSTOMER FROM 'customer.tbl';
+        printf("Load data to tablle %s from %s\n",stmt->tbName.c_str(),stmt->filename.c_str());
+        //当前工作目录是某个数据库目录下,因此..回到.MiniDB,../..回到Debug,../../..回到项目根目录
+        string filepath = "../../../data/" + stmt->filename;
+        char line[1024];
+        FILE* stream = fopen(filepath.data(), "r");
+	    int i = 0;
+	    while (fgets(line, 1024, stream) != NULL)//逐行读取
+        {
+            printf("%s",line);
+            qlm->Load(stmt->tbName,line);
+            memset(line,0,1024 * sizeof(char));
+        }
+        fclose(stream);//文件打开后要进行关闭操作
+        break;
+    }
     default:
         assert(1);
         return;
