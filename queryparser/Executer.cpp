@@ -154,6 +154,8 @@ void Executer::execTbStmt(tbStmt *stmt)
     case tbStmt::TB_CREATE:
     {   
         //CREATE TABLE tb (id INT NOT NULL,score FLOAT NOT NULL,age INT);
+        // CREATE TABLE tb1 (id1 INT,score1 FLOAT,age1 INT);
+        // CREATE TABLE tb2 (id2 INT,score2 FLOAT,age2 INT);
         // CREATE TABLE <tbName> ’(’<fieldList>’)’
         // for(int i = 0;i < stmt->tableInfo->attrNum;i++)
         //     printf("col %d :%s\n",i,stmt->tableInfo->attrs[i].attrName.c_str());
@@ -197,6 +199,8 @@ void Executer::execTbStmt(tbStmt *stmt)
     case tbStmt::TB_INSERT:
     {   
         //INSERT INTO tb VALUES (1,1.5,10), (2,2.5,12),(3,3.5,15)
+        //INSERT INTO tb1 VALUES (1,1.5,10), (2,2.5,12),(3,3.5,15)
+        //INSERT INTO tb2 VALUES (1,1.5,10), (2,2.5,12),(3,3.5,15)
         //INSERT INTO tb VALUES (NULL,58.6,15),(5,NULL,17);
         //INSERT INTO tbName VALUES valueLists
         for(int i = 0;i < stmt->datas.size();i++) {
@@ -234,6 +238,12 @@ void Executer::execTbStmt(tbStmt *stmt)
         break; 
     }
     case tbStmt::TB_SELECT:{
+        // SELECT tb.id FROM tb WHERE tb.id > 0;
+        // SELECT tb.id,tb1.id1 FROM tb,tb1 WHERE tb.id > 0;
+        // SELECT tb1.id1 FROM tb1 WHERE tb1.id1 > 0;
+        // SELECT tb2.id2 FROM tb2 WHERE tb2.id2 > 0;
+        // SELECT tb.id,tb1.id1 FROM tb,tb1 WHERE tb.id = tb1.id1;
+        // SELECT * FROM tb,tb1,tb2 WHERE tb.id = tb1.id1;
         // TODO:多表SELECT
         // SELECT <selector> FROM <tableList> WHERE <whereClause>
         // SELECT * FROM tb WHERE id > 0 AND score > 1.0;
@@ -244,7 +254,10 @@ void Executer::execTbStmt(tbStmt *stmt)
             attrNames.push_back(stmt->collist[i]->colname);
         }
         // printf("%ld,%ld\n",attrNames.size(),stmt->collist.size());
-        qlm->Select(stmt->tablelist[0], stmt->relations,attrNames);
+        if(stmt->tablelist.size() == 1)
+            qlm->Select(stmt->tablelist[0], stmt->relations,attrNames);
+        else
+            qlm->Select(stmt->tablelist,stmt->collist,stmt->relations);
         break;
     }
     case tbStmt::TB_LOAD:{

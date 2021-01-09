@@ -1259,6 +1259,9 @@ void DataOperater::Select(const string tableName, vector<Relation *> relations, 
 		puts("...");
 		printf("Altogether %d records.\n", outcnt);
 	}
+	if (outcnt == 0){
+		printf("No results.\n");
+	}
 	if (found)
 	{
 		delete indexscan;
@@ -1268,509 +1271,503 @@ void DataOperater::Select(const string tableName, vector<Relation *> relations, 
 	delete filehandle;
 }
 
+//判断一个元素是否在vector中
+template <class T>
+bool invector(vector<T> vec, T st)
+{
+	for (T t : vec)
+	{
+		if (st == t)
+			return true;
+	}
+	return false;
+}
+
 void DataOperater::Select(vector<string> tableNames, vector<Tcol *> cols, vector<Relation *> relations)
 {
-	// vector<int> tableIDs;
-	// for (int i = 0; i < tableNames.size(); i++)
-	// {
-	// 	int tableID = _smm->_fromNameToID(tableNames[i]);
-	// 	if (tableID == -1)
-	// 	{
-	// 		fprintf(stderr, "Error: such table does not exist!\n");
-	// 		return;
-	// 	}
-	// 	for (int j = 0; j < tableIDs.size(); j++)
-	// 	{
-	// 		if (tableIDs[j] == tableID)
-	// 		{
-	// 			fprintf(stderr, "Error: cannot join same tables!\n");
-	// 			return;
-	// 		}
-	// 	}
-	// 	tableIDs.push_back(tableID);
+	//多表连接函数
+	vector<int> tableIDs;
+	for (int i = 0; i < tableNames.size(); i++)
+	{
+		int tableID = _smm->_fromNameToID(tableNames[i]);
+		if (tableID == -1)
+		{
+			fprintf(stderr, "Error: no such table in tablelist!\n");
+			return;
+		}
+		for (int j = 0; j < tableIDs.size(); j++)
+		{
+			if (tableIDs[j] == tableID)
+			{
+				fprintf(stderr, "Error: cannot connect same tables!\n");
+				return;
+			}
+		}
+		tableIDs.push_back(tableID);
+	}
+
+	vector<pair<int, int>> attrIDs;
+	for (int i = 0; i < cols.size(); i++)
+	{
+		if (cols[i]->colname == "*")
+		{
+			//printf("所有列\n");
+			attrIDs.clear();
+			cols.clear();
+			for(int i = 0;i < tableNames.size();i++) {
+				for(int attrID = 0;attrID < _smm->_tables[tableIDs[i]].attrNum;attrID++){
+					attrIDs.push_back(make_pair(tableIDs[i], attrID));
+					Tcol* tcol = new Tcol(tableNames[i],_smm->_tables[tableIDs[i]].attrs[attrID].attrName);
+					cols.push_back(tcol);
+				}
+			}
+			break;
+		}
+		string table = cols[i]->tablename;
+		string attr = cols[i]->colname;
+		int attrID = -1;
+
+		for (int i = 0; i < tableNames.size(); i++)
+		{
+			if (table == tableNames[i])
+			{
+				attrID = _smm->_fromNameToID(attr, tableIDs[i]);
+				attrIDs.push_back(make_pair(tableIDs[i], attrID));
+			}
+		}
+		if (attrID == -1)
+		{
+			fprintf(stderr, "Error: invalid columns!\n");
+			return;
+		}
+	}
+	// for(int i = 0;i < attrIDs.size();i++){
+	// 	printf("attrID:%d %d\n",attrIDs[i].first,attrIDs[i].second);
 	// }
 
-	// vector<pair<int, int>> attrIDs;
-	// for (int i = 0; i < attrNames.size(); i++)
-	// {
-	// 	int pos = attrNames[i].find('.');
-	// 	if (pos == string::npos)
-	// 	{
-	// 		fprintf(stderr, "Error: invalid columns!\n");
-	// 		return;
-	// 	}
-	// 	string table = attrNames[i].substr(0, pos);
-	// 	string attr = attrNames[i].substr(pos + 1);
-	// 	int attrID = -1;
-	// 	if (table == tableName1)
-	// 	{
-	// 		attrID = _smm->_fromNameToID(attr, tableID1);
-	// 		attrIDs.push_back(make_pair(tableID1, attrID));
-	// 	}
-	// 	else if (table == tableName2)
-	// 	{
-	// 		attrID = _smm->_fromNameToID(attr, tableID2);
-	// 		attrIDs.push_back(make_pair(tableID2, attrID));
-	// 	}
-	// 	if (attrID == -1)
-	// 	{
-	// 		fprintf(stderr, "Error: invalid columns!\n");
-	// 		return;
-	// 	}
-	// }
-	// vector<pair<int, int>> attrID1, attrID2;
-	// for (int i = 0; i < relations.size(); i++)
-	// {
-	// 	int tableID = _smm->_fromNameToID(relations[i]->table1);
-	// 	if (tableID == -1)
-	// 	{
-	// 		fprintf(stderr, "Error: invalid tables!\n");
-	// 		return;
-	// 	}
-	// 	int attr = _smm->_fromNameToID(relations[i]->attr1, tableID);
-	// 	if (attr == -1)
-	// 	{
-	// 		fprintf(stderr, "Error: invalid columns!\n");
-	// 		return;
-	// 	}
-	// 	attrID1.push_back(make_pair(tableID, attr));
-	// 	if (relations[i]->op == CompOp::IS_NULL || relations[i]->op == CompOp::IS_NOT_NULL)
-	// 	{
-	// 		attrID2.push_back(make_pair(-1, -1));
-	// 		continue;
-	// 	}
-	// 	if (relations[i]->value->data != nullptr)
-	// 	{
-	// 		attrID2.push_back(make_pair(-1, -1));
-	// 		//类型检查与转换
-	// 		if (_smm->_tables[tableID].attrs[attr].attrType == INT || _smm->_tables[tableID].attrs[attr].attrType == DATE)
-	// 		{
-	// 			if (relations[i]->value->datatype == INT || relations[i]->value->datatype == DATE)
-	// 			{
-	// 				continue;
-	// 			}
-	// 			else if (relations[i]->value->datatype == FLOAT)
-	// 			{
-	// 				double fdata = *(double *)relations[i]->value->data;
-	// 				int *idata = new int(fdata);
-	// 				relations[i]->value->data = (BufType)idata;
-	// 			}
-	// 			else
-	// 			{
-	// 				printf("Error: data type does not fit!\n");
-	// 				return;
-	// 			}
-	// 		}
-	// 		else if (_smm->_tables[tableID].attrs[attr].attrType == FLOAT)
-	// 		{
-	// 			if (relations[i]->value->datatype == INT || relations[i]->value->datatype == DATE)
-	// 			{
-	// 				int idata = *(int *)relations[i]->value->data;
-	// 				double *fdata = new double(idata);
-	// 				relations[i]->value->data = (BufType)fdata;
-	// 			}
-	// 			else if (relations[i]->value->datatype == FLOAT)
-	// 			{
-	// 				continue;
-	// 			}
-	// 			else
-	// 			{
-	// 				printf("Error: data type does not fit!\n");
-	// 				return;
-	// 			}
-	// 		}
-	// 		else if (_smm->_tables[tableID].attrs[attr].attrType == STRING)
-	// 		{
-	// 			if (relations[i]->value->datatype == STRING)
-	// 			{
-	// 				continue;
-	// 			}
-	// 			else
-	// 			{
-	// 				printf("Error: data type does not fit!\n");
-	// 				return;
-	// 			}
-	// 		}
-	// 		else
-	// 		{
-	// 			//经过检查不允许插入NULL值域(实际上目前代码支持插入NULL),所以理论上不可能进入这里
-	// 			assert(0);
-	// 		}
-	// 		continue;
-	// 	}
-	// 	tableID = _smm->_fromNameToID(relations[i]->table2);
-	// 	if (tableID == -1)
-	// 	{
-	// 		fprintf(stderr, "Error: invalid tables!\n");
-	// 		return;
-	// 	}
-	// 	attr = _smm->_fromNameToID(relations[i]->attr2, tableID);
-	// 	if (attr == -1)
-	// 	{
-	// 		fprintf(stderr, "Error: invalid columns!\n");
-	// 		return;
-	// 	}
-	// 	attrID2.push_back(make_pair(tableID, attr));
-	// 	if (_smm->_tables[attrID1[i].first].attrs[attrID1[i].second].attrType != _smm->_tables[attrID2[i].first].attrs[attrID2[i].second].attrType)
-	// 	{
-	// 		fprintf(stderr, "Error: invalid comparison!\n");
-	// 		return;
-	// 	}
-	// }
-	// bool found = false;
-	// int indexAttr = -1, indexRel = -1, indexFileID = -1;
-	// SIndexManager *indexscan = nullptr;
-	// for (int i = 0; i < relations.size(); i++)
-	// {
-	// 	if (attrID2[i].first == -1)
-	// 		continue;
-	// 	if (attrID1[i].first == attrID2[i].first)
-	// 		continue;
-	// 	if (relations[i]->op != EQ_OP)
-	// 		continue;
-	// 	if (_smm->_tables[attrID1[i].first].attrs[attrID1[i].second].haveIndex)
-	// 	{
-	// 		swap(attrID1[i], attrID2[i]);
-	// 	}
-	// 	if (!_smm->_tables[attrID2[i].first].attrs[attrID2[i].second].haveIndex)
-	// 		continue;
-	// 	if (attrID1[i].first != tableID1)
-	// 	{
-	// 		swap(tableID1, tableID2);
-	// 		tableName1.swap(tableName2);
-	// 	}
-	// 	found = true;
-	// 	indexAttr = attrID2[i].second;
-	// 	indexRel = i;
-	// 	_ixm->OpenIndex((_smm->_tables[attrID2[i].first].tableName + "." + _smm->_tables[attrID2[i].first].attrs[attrID2[i].second].attrName).c_str(), indexFileID);
-	// 	indexscan = new SIndexManager(bufPageManager, indexFileID);
-	// 	break;
-	// }
-	// RecManager *filehandle1 = new RecManager(bufPageManager, _smm->_tableFileID[tableName1], 0, false);
-	// RecManager::Iterator *iter1 = new RecManager::Iterator(filehandle1);
+	// 处理where
+	vector<pair<int, int>> attrID1, attrID2;
+	for (int i = 0; i < relations.size(); i++)
+	{
+		int tableID = _smm->_fromNameToID(relations[i]->table1);
+		if (tableID == -1)
+		{
+			fprintf(stderr, "Error: In whereClauses, invalid tables!\n");
+			return;
+		}
+		if (!invector(tableIDs, tableID))
+		{
+			fprintf(stderr, "Error: In whereClauses, no such table in tablelist!\n");
+			return;
+		}
 
-	// RecManager *filehandle2 = new RecManager(bufPageManager, _smm->_tableFileID[tableName2], 0, false);
-	// RecManager::Iterator *iter2 = new RecManager::Iterator(filehandle2);
+		int attr = _smm->_fromNameToID(relations[i]->attr1, tableID);
+		if (attr == -1)
+		{
+			fprintf(stderr, "Error: In whereClauses, invalid columns!\n");
+			return;
+		}
+		attrID1.push_back(make_pair(tableID, attr));
+		if (relations[i]->op == CompOp::IS_NULL || relations[i]->op == CompOp::IS_NOT_NULL)
+		{
+			attrID2.push_back(make_pair(-1, -1));
+			continue;
+		}
+		if (relations[i]->value->data != nullptr)
+		{
+			attrID2.push_back(make_pair(-1, -1));
+			//类型检查与转换
+			if (_smm->_tables[tableID].attrs[attr].attrType == INT || _smm->_tables[tableID].attrs[attr].attrType == DATE)
+			{
+				if (relations[i]->value->datatype == INT || relations[i]->value->datatype == DATE)
+				{
+					continue;
+				}
+				else if (relations[i]->value->datatype == FLOAT)
+				{
+					double fdata = *(double *)relations[i]->value->data;
+					int *idata = new int(fdata);
+					relations[i]->value->data = (BufType)idata;
+				}
+				else
+				{
+					printf("Error: data type does not fit!\n");
+					return;
+				}
+			}
+			else if (_smm->_tables[tableID].attrs[attr].attrType == FLOAT)
+			{
+				if (relations[i]->value->datatype == INT || relations[i]->value->datatype == DATE)
+				{
+					int idata = *(int *)relations[i]->value->data;
+					double *fdata = new double(idata);
+					relations[i]->value->data = (BufType)fdata;
+				}
+				else if (relations[i]->value->datatype == FLOAT)
+				{
+					continue;
+				}
+				else
+				{
+					printf("Error: data type does not fit!\n");
+					return;
+				}
+			}
+			else if (_smm->_tables[tableID].attrs[attr].attrType == STRING)
+			{
+				if (relations[i]->value->datatype == STRING)
+				{
+					continue;
+				}
+				else
+				{
+					printf("Error: data type does not fit!\n");
+					return;
+				}
+			}
+			else
+			{
+				//经过检查不允许插入NULL值域(实际上目前代码支持插入NULL),所以理论上不可能进入这里
+				assert(0);
+			}
+			continue;
+		}
 
-	// int recordSize1 = _smm->_tables[tableID1].recordSize, recordSize2 = _smm->_tables[tableID2].recordSize;
+		tableID = _smm->_fromNameToID(relations[i]->table2);
+		if (tableID == -1)
+		{
+			fprintf(stderr, "Error: In whereClauses, invalid tables!\n");
+			return;
+		}
+		if (!invector(tableIDs, tableID))
+		{
+			fprintf(stderr, "Error: In whereClauses, no such table in tablelist!\n");
+			return;
+		}
+		attr = _smm->_fromNameToID(relations[i]->attr2, tableID);
+		if (attr == -1)
+		{
+			fprintf(stderr, "Error: In whereClauses, invalid columns!\n");
+			return;
+		}
+		attrID2.push_back(make_pair(tableID, attr));
+		// 检查两个列类型是否相同
+		if (_smm->_tables[attrID1[i].first].attrs[attrID1[i].second].attrType != _smm->_tables[attrID2[i].first].attrs[attrID2[i].second].attrType)
+		{
+			fprintf(stderr, "Error: In whereClauses, invalid comparison!\n");
+			return;
+		}
+	}
 
-	// unsigned int recID;
-	// int pageID, slotID;
-	// int outcnt = 0;
-	// while (1)
-	// {
-	// 	BufType data1 = new unsigned int[recordSize1 >> 2], data2 = new unsigned int[recordSize2 >> 2];
-	// 	bool hasNext = iter1->next(data1, recID);
-	// 	pageID = recID >> 16;
-	// 	slotID = (recID << 16 >> 16);
-	// 	if (found)
-	// 	{
-	// 		BufType searchData = data1 + _smm->_tables[attrID1[indexRel].first].attrs[attrID1[indexRel].second].offset;
-	// 		if (!indexscan->OpenScan(searchData, true))
-	// 		{
-	// 			delete[] data1;
-	// 			delete[] data2;
-	// 			if (!hasNext)
-	// 				break;
-	// 			continue;
-	// 		}
-	// 	}
-	// 	// if (!iter2->OpenScan(filehandle2)) {
-	// 	// 	delete [] data1;
-	// 	// 	delete [] data2;
-	// 	// 	if (!hasNext) break;
-	// 	// 	continue;
-	// 	// }
-	// 	while (1)
-	// 	{
-	// 		bool hasNext2;
-	// 		if (found)
-	// 		{
-	// 			hasNext2 = indexscan->GetNextEntry(pageID, slotID);
-	// 			recID = (pageID << 16) + slotID;
-	// 			//printf("Scan,page:%d,slot:%d\n",pageID,slotID);
-	// 			filehandle2->GetRec(data2, recID);
-	// 			// filehandle2->GetRec(pageID, slotID, data2);
-	// 		}
-	// 		else
-	// 		{
-	// 			hasNext2 = iter2->next(data2, recID);
-	// 			if (!hasNext2)
-	// 				break;
-	// 			pageID = recID >> 16;
-	// 			slotID = (recID << 16 >> 16);
-	// 		}
-	// 		bool ok = true;
-	// 		unsigned long long *bitmap1 = (unsigned long long *)data1;
-	// 		unsigned long long *bitmap2 = (unsigned long long *)data2;
-	// 		for (int i = 0; i < relations.size(); i++)
-	// 		{
-	// 			BufType attr1;
-	// 			//cout << recordSize1 << " " << recordSize2 << endl;
-	// 			//cout << _smm->_tables[attrID1[i].first].attrs[attrID1[i].second].offset << " " << _smm->_tables[attrID2[i].first].attrs[attrID2[i].second].offset << endl;
-	// 			if (attrID1[i].first == tableID1)
-	// 			{
-	// 				attr1 = data1 + _smm->_tables[tableID1].attrs[attrID1[i].second].offset;
-	// 				if (relations[i]->op == IS_NULL)
-	// 				{
-	// 					if ((bitmap1[0] & (1ull << attrID1[i].second)) == 0)
-	// 						continue;
-	// 					else
-	// 					{
-	// 						ok = false;
-	// 						break;
-	// 					}
-	// 				}
-	// 				if (relations[i]->op == IS_NOT_NULL)
-	// 				{
-	// 					if ((bitmap1[0] & (1ull << attrID1[i].second)) != 0)
-	// 						continue;
-	// 					else
-	// 					{
-	// 						ok = false;
-	// 						break;
-	// 					}
-	// 				}
-	// 				if ((bitmap1[0] & (1ull << attrID1[i].second)) == 0)
-	// 				{
-	// 					ok = false;
-	// 					break;
-	// 				}
-	// 			}
-	// 			else
-	// 			{
-	// 				attr1 = data2 + _smm->_tables[tableID2].attrs[attrID1[i].second].offset;
-	// 				if (relations[i]->op == IS_NULL)
-	// 				{
-	// 					if ((bitmap2[0] & (1ull << attrID1[i].second)) == 0)
-	// 						continue;
-	// 					else
-	// 					{
-	// 						ok = false;
-	// 						break;
-	// 					}
-	// 				}
-	// 				if (relations[i]->op == IS_NOT_NULL)
-	// 				{
-	// 					if ((bitmap2[0] & (1ull << attrID1[i].second)) != 0)
-	// 						continue;
-	// 					else
-	// 					{
-	// 						ok = false;
-	// 						break;
-	// 					}
-	// 				}
-	// 				if ((bitmap2[0] & (1ull << attrID1[i].second)) == 0)
-	// 				{
-	// 					ok = false;
-	// 					break;
-	// 				}
-	// 			}
-	// 			//cout << *(int*)attr1 << endl;
-	// 			BufType attr2 = relations[i]->value->data;
-	// 			if (attr2 == nullptr)
-	// 			{
-	// 				if (attrID2[i].first == tableID1)
-	// 				{
-	// 					attr2 = data1 + _smm->_tables[tableID1].attrs[attrID2[i].second].offset;
-	// 					if ((bitmap1[0] & (1ull << attrID2[i].second)) == 0)
-	// 					{
-	// 						ok = false;
-	// 						break;
-	// 					}
-	// 				}
-	// 				else
-	// 				{
-	// 					attr2 = data2 + _smm->_tables[tableID2].attrs[attrID2[i].second].offset;
-	// 					if ((bitmap2[0] & (1ull << attrID2[i].second)) == 0)
-	// 					{
-	// 						ok = false;
-	// 						break;
-	// 					}
-	// 				}
-	// 			}
-	// 			//cout << *(int*)attr2 << endl;
-	// 			ok = _compare(attr1, attr2, relations[i]->op, _smm->_tables[attrID1[i].first].attrs[attrID1[i].second].attrType);
-	// 			if (i == indexRel && !ok)
-	// 				hasNext2 = false;
-	// 			if (!ok)
-	// 				break;
-	// 		}
-	// 		if (ok)
-	// 		{
-	// 			outcnt++;
-	// 			if (outcnt <= 100)
-	// 			{
-	// 				putchar('|');
-	// 				//cout << " bitmap: " << bitmap[0] << " |";
-	// 				for (int i = 0; i < attrIDs.size(); i++)
-	// 				{
-	// 					BufType out;
-	// 					if (attrIDs[i].first == tableID1)
-	// 					{
-	// 						out = data1 + _smm->_tables[tableID1].attrs[attrIDs[i].second].offset;
-	// 						if ((bitmap1[0] & (1ull << attrIDs[i].second)) == 0)
-	// 						{
-	// 							printf(" NULL |");
-	// 							continue;
-	// 						}
-	// 					}
-	// 					else
-	// 					{
-	// 						out = data2 + _smm->_tables[tableID2].attrs[attrIDs[i].second].offset;
-	// 						if ((bitmap2[0] & (1ull << attrIDs[i].second)) == 0)
-	// 						{
-	// 							printf(" NULL |");
-	// 							continue;
-	// 						}
-	// 					}
-	// 					//cout << " " << (bitmap[0] & (1ull << attrIDs[i])) << " ";
-	// 					if (_smm->_tables[attrIDs[i].first].attrs[attrIDs[i].second].attrType == INT)
-	// 					{
-	// 						printf(" INT %d ", *(int *)out);
-	// 					}
-	// 					else if (_smm->_tables[attrIDs[i].first].attrs[attrIDs[i].second].attrType == FLOAT)
-	// 					{
-	// 						printf(" FLOAT %.6lf ", *(double *)out);
-	// 					}
-	// 					else if (_smm->_tables[attrIDs[i].first].attrs[attrIDs[i].second].attrType == STRING)
-	// 					{
-	// 						printf(" STRING %s ", (char *)out);
-	// 					}
-	// 					putchar('|');
-	// 				}
-	// 				putchar('\n');
-	// 			}
-	// 		}
-	// 		if (!hasNext2)
-	// 			break;
-	// 	}
-	// 	// TODO: delete data会引发内存异常,暂时找不到问题所在
-	// 	// delete [] data1;
-	// 	// delete [] data2;
-	// 	if (!hasNext)
-	// 		break;
-	// }
-	// if (outcnt > 100)
-	// {
-	// 	puts("...");
-	// 	printf("Altogether %d records.\n", outcnt);
-	// }
-	// if (found)
-	// {
-	// 	delete indexscan;
-	// 	_ixm->CloseIndex(indexFileID);
-	// }
+	vector<RecManager *> filehandles;
+	vector<RecManager::Iterator *> iters;
+	vector<int> recordSizes;
+	for (int i = 0; i < tableNames.size(); i++)
+	{
+		RecManager *filehandle = new RecManager(bufPageManager, _smm->_tableFileID[tableNames[i]], 0, false);
+		RecManager::Iterator *iter = new RecManager::Iterator(filehandle);
+		int recordSize = _smm->_tables[tableIDs[i]].recordSize;
+		filehandles.push_back(filehandle);
+		iters.push_back(iter);
+		recordSizes.push_back(recordSize);
+	}
+
+	//printf("多表连接1\n");
+
+	//datas[i]是第i个表中的所有数据
+	vector<vector<BufType>> datas;
+	for (int i = 0; i < tableNames.size(); i++)
+	{
+		vector<BufType> tabledatas;
+		unsigned int recID;
+		while (1)
+		{
+			BufType data = new unsigned int[recordSizes[i] >> 2];
+			bool hasNext = iters[i]->next(data, recID);
+			if (!hasNext)
+				break;
+			bool ok = true;
+			unsigned long long *bitmap = (unsigned long long *)data;
+
+			// 进行单项筛选
+			for (int i = 0; i < relations.size(); i++)
+			{
+				if(attrID1[i].first != tableIDs[i])	continue;
+				BufType data1 = data + _smm->_tables[attrID1[i].first].attrs[attrID1[i].second].offset;
+
+				if (relations[i]->op == IS_NULL)
+				{
+					if ((bitmap[0] & (1ull << attrID1[i].second)) == 0)
+						continue;
+					else
+					{
+						ok = false;
+						break;
+					}
+				}
+				if (relations[i]->op == IS_NOT_NULL)
+				{
+					if ((bitmap[0] & (1ull << attrID1[i].second)) != 0)
+						continue;
+					else
+					{
+						ok = false;
+						break;
+					}
+				}
+
+				BufType data2 = relations[i]->value->data;
+				if (data2 == nullptr)
+				{
+					continue;
+				}
+				if ((bitmap[0] & (1ull << attrID1[i].second)) == 0)
+				{
+					ok = false;
+					break;
+				}
+				ok = _compare(data1, data2, relations[i]->op, _smm->_tables[tableIDs[i]].attrs[attrID1[i].second].attrType);
+				if (!ok)
+					break;
+			}
+			if(ok)	tabledatas.push_back(data);
+
+		}
+		datas.push_back(tabledatas);
+		if(tabledatas.size() == 0){
+			printf("No result.\n");
+			return;
+		}
+		// printf("第%d个表中有%ld条被选数据\n",i,tabledatas.size());
+	}
+
+	vector<int> scanid;
+	for(int i = 0; i < tableNames.size(); i++) {
+		scanid.push_back(0);
+	}
+
+	//printf("多表连接2\n");
+	int outcnt = 0;
+	while(1) {
+		vector<BufType> scandatas;
+		for(int i = 0;i < tableNames.size();i++){
+			scandatas.push_back(datas[i][scanid[i]]);
+		}
+
+		bool ok = true;
+		//printf("多表连接3\n");
+		for (int i = 0; i < relations.size(); i++)
+		{
+			//获取attr1的表在tableID里的位置
+			int tableidx1 = -1;
+			for(int j = 0;j < tableNames.size();j++){
+				if(attrID1[i].first == tableIDs[j]){
+					tableidx1 = j;
+					break;
+				}
+			}
+			assert(tableidx1 >= 0);
+			// printf("attr1:%d,%d,tableidx:%d\n",attrID1[i].first,attrID1[i].second,tableidx1);
+			//NULL检查和单项属性检查在之前已完成,这里只检查联合判定
+			BufType data1 = scandatas[tableidx1] + _smm->_tables[attrID1[i].first].attrs[attrID1[i].second].offset;
+
+			//获取attr2的表在tableID里的位置
+			if(attrID2[i].first == -1 || attrID2[i].second == -1) continue;
+			int tableidx2 = -1;
+			for(int j = 0;j < tableNames.size();j++){
+				if(attrID2[i].first == tableIDs[j]){
+					tableidx2 = j;
+					break;
+				}
+			}
+			assert(tableidx2 >= 0);
+			BufType data2 = scandatas[tableidx2] + _smm->_tables[attrID2[i].first].attrs[attrID2[i].second].offset;
+			ok = _compare(data1, data2, relations[i]->op, _smm->_tables[attrID1[i].first].attrs[attrID1[i].second].attrType);
+			if(!ok) break;
+		}
+		//printf("多表连接4\n");
+		if (ok)
+		{
+			outcnt++;
+			if (outcnt <= 100)
+			{
+				putchar('|');
+				for (int i = 0; i < attrIDs.size(); i++)
+				{
+					int tableid = attrIDs[i].first;
+					int attrid = attrIDs[i].second;
+					//获取attr1的表在tableID里的位置
+					int tableidx1 = -1;
+					for(int j = 0;j < tableNames.size();j++){
+						if(tableid == tableIDs[j]){
+							tableidx1 = j;
+							break;
+						}
+					}
+					assert(tableidx1 >= 0);
+					//printf("attr1:%d,%d,tableidx:%d\n",tableid,attrid,tableidx1);
+					BufType out = scandatas[tableidx1] + _smm->_tables[tableid].attrs[attrid].offset;
+					printf(" %s.%s ", cols[i]->tablename.c_str(),cols[i]->colname.c_str());
+
+					unsigned long long *bitmap = (unsigned long long *)scandatas[tableidx1];
+					if ((bitmap[0] & (1ull << attrid)) == 0)
+					{
+						printf(" NULL |");
+						continue;
+					}
+					if (_smm->_tables[tableid].attrs[attrid].attrType == INT)
+					{
+						printf(" %d ", *(int *)out);
+					}
+					else if (_smm->_tables[tableid].attrs[attrid].attrType == FLOAT)
+					{
+						printf(" %.6lf ", *(double *)out);
+					}
+					else if (_smm->_tables[tableid].attrs[attrid].attrType == STRING)
+					{
+						printf(" %s ", (char *)out);
+					}
+					putchar('|');
+				}
+				putchar('\n');
+			}
+		}
+
+		bool jw = true;
+		int idx = scanid.size() - 1;
+		while(idx >= 0) {
+			// printf("scanid:第%d个--%d\n",idx,scanid[idx]);
+			if(jw){
+				scanid[idx] = scanid[idx] + 1;
+				if(scanid[idx] >= datas[idx].size() && idx != 0){
+					scanid[idx] = 0;
+					jw = true;
+				}else{
+					jw = false;
+				}
+			}else{
+				jw = false;
+			}
+			idx--;
+		}
+		if(scanid[0] >= datas[0].size())	break;
+	}
+	if (outcnt > 100)
+	{
+	 	puts("...");
+		printf("Altogether %d records.\n", outcnt);
+	}
 	// delete iter1;
 	// delete filehandle1;
 	// delete iter2;
 	// delete filehandle2;
 }
 
-bool DataOperater::_compare(BufType data1, BufType data2, CompOp op, int type)
-{
-	if (type == STRING)
+	bool DataOperater::_compare(BufType data1, BufType data2, CompOp op, int type)
 	{
-		int result = strcmp((char *)data1, (char *)data2);
-		if (op == EQ_OP)
-			return result == 0;
-		if (op == NE_OP)
-			return result != 0;
-		if (op == LT_OP)
-			return result < 0;
-		if (op == GT_OP)
-			return result > 0;
-		if (op == LE_OP)
-			return result <= 0;
-		if (op == GE_OP)
-			return result >= 0;
+		if (type == STRING)
+		{
+			int result = strcmp((char *)data1, (char *)data2);
+			if (op == EQ_OP)
+				return result == 0;
+			if (op == NE_OP)
+				return result != 0;
+			if (op == LT_OP)
+				return result < 0;
+			if (op == GT_OP)
+				return result > 0;
+			if (op == LE_OP)
+				return result <= 0;
+			if (op == GE_OP)
+				return result >= 0;
+		}
+		else if (type == INT)
+		{
+			if (op == EQ_OP)
+				return *(int *)data1 == *(int *)data2;
+			if (op == NE_OP)
+				return *(int *)data1 != *(int *)data2;
+			if (op == LT_OP)
+				return *(int *)data1 < *(int *)data2;
+			if (op == GT_OP)
+				return *(int *)data1 > *(int *)data2;
+			if (op == LE_OP)
+				return *(int *)data1 <= *(int *)data2;
+			if (op == GE_OP)
+				return *(int *)data1 >= *(int *)data2;
+		}
+		else if (type == FLOAT)
+		{
+			if (op == EQ_OP)
+				return *(double *)data1 == *(double *)data2;
+			if (op == NE_OP)
+				return *(double *)data1 != *(double *)data2;
+			if (op == LT_OP)
+				return *(double *)data1 < *(double *)data2;
+			if (op == GT_OP)
+				return *(double *)data1 > *(double *)data2;
+			if (op == LE_OP)
+				return *(double *)data1 <= *(double *)data2;
+			if (op == GE_OP)
+				return *(double *)data1 >= *(double *)data2;
+		}
+		printf("Error Operator in compare\n");
+		assert(0);
+		return false;
 	}
-	else if (type == INT)
-	{
-		if (op == EQ_OP)
-			return *(int *)data1 == *(int *)data2;
-		if (op == NE_OP)
-			return *(int *)data1 != *(int *)data2;
-		if (op == LT_OP)
-			return *(int *)data1 < *(int *)data2;
-		if (op == GT_OP)
-			return *(int *)data1 > *(int *)data2;
-		if (op == LE_OP)
-			return *(int *)data1 <= *(int *)data2;
-		if (op == GE_OP)
-			return *(int *)data1 >= *(int *)data2;
-	}
-	else if (type == FLOAT)
-	{
-		if (op == EQ_OP)
-			return *(double *)data1 == *(double *)data2;
-		if (op == NE_OP)
-			return *(double *)data1 != *(double *)data2;
-		if (op == LT_OP)
-			return *(double *)data1 < *(double *)data2;
-		if (op == GT_OP)
-			return *(double *)data1 > *(double *)data2;
-		if (op == LE_OP)
-			return *(double *)data1 <= *(double *)data2;
-		if (op == GE_OP)
-			return *(double *)data1 >= *(double *)data2;
-	}
-	printf("Error Operator in compare\n");
-	assert(0);
-	return false;
-}
 
-void DataOperater::Load(const string tableName, const char *line)
-{
-	int tableID = _smm->_fromNameToID(tableName);
-	vector<AttrInfo> attrsinfos = _smm->_tables[tableID].attrs;
-	vector<Value *> rdata;
-	vector<int> cols;
-	int nullnub = 0;
+	void DataOperater::Load(const string tableName, const char *line)
+	{
+		int tableID = _smm->_fromNameToID(tableName);
+		vector<AttrInfo> attrsinfos = _smm->_tables[tableID].attrs;
+		vector<Value *> rdata;
+		vector<int> cols;
+		int nullnub = 0;
 
-	char *tmp = strdup(line);
-	char *tok;
-	/* 获取第一个子字符串 */
-	tok = strtok(tmp, "|");
-	vector<char *> tmps;
-	int i = 0;
-	while (tok != NULL)
-	{
-	// 	printf("%d %s\n", i, tok);
-		if(i >= attrsinfos.size()) break;
-		assert(i < attrsinfos.size());
-		if (attrsinfos[i].attrType == INT)
+		char *tmp = strdup(line);
+		char *tok;
+		/* 获取第一个子字符串 */
+		tok = strtok(tmp, "|");
+		vector<char *> tmps;
+		int i = 0;
+		while (tok != NULL)
 		{
-			int *vi = new int(atoi(tok));
-			Value *value = new Value(INT, (BufType)vi);
-			rdata.push_back(value);
-			cols.push_back(i);
+			// 	printf("%d %s\n", i, tok);
+			if (i >= attrsinfos.size())
+				break;
+			assert(i < attrsinfos.size());
+			if (attrsinfos[i].attrType == INT)
+			{
+				int *vi = new int(atoi(tok));
+				Value *value = new Value(INT, (BufType)vi);
+				rdata.push_back(value);
+				cols.push_back(i);
+			}
+			else if (attrsinfos[i].attrType == FLOAT)
+			{
+				double *vf = new double(atof(tok));
+				Value *value = new Value(FLOAT, (BufType)vf);
+				rdata.push_back(value);
+				cols.push_back(i);
+			}
+			else
+			{
+				char *buftmp = strdup(tok);
+				tmps.push_back(buftmp);
+				Value *value = new Value(STRING, (BufType)buftmp);
+				rdata.push_back(value);
+				cols.push_back(i);
+			}
+			tok = strtok(NULL, "|\n");
+			i++;
 		}
-		else if (attrsinfos[i].attrType == FLOAT)
+		Insert(tableName, rdata, cols, nullnub);
+		rdata.clear();
+		cols.clear();
+		free(tmp);
+		for (int j = 0; j < tmps.size(); j++)
 		{
-			double *vf = new double(atof(tok));
-			Value *value = new Value(FLOAT, (BufType)vf);
-			rdata.push_back(value);
-			cols.push_back(i);
+			free(tmps[j]);
 		}
-		else
-		{
-			char *buftmp = strdup(tok);
-			tmps.push_back(buftmp);
-			Value *value = new Value(STRING, (BufType)buftmp);
-			rdata.push_back(value);
-			cols.push_back(i);
-		}
-		tok = strtok(NULL, "|\n");
-		i++;
+		tmps.clear();
 	}
-	Insert(tableName, rdata, cols, nullnub);
-	rdata.clear();
-	cols.clear();
-	free(tmp);
-	for (int j = 0; j < tmps.size(); j++)
-	{
-		free(tmps[j]);
-	}
-	tmps.clear();
-}
