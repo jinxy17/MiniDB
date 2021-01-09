@@ -803,7 +803,8 @@ void SysManager::AddColumn(const string tableName, AttrInfo attr) {
 		bitmap[0] |= (1ull << attrNum);
 		BufType newData = new unsigned int[newRecordSize >> 2];
 		memcpy((char*)newData, data, recordSize);
-		memcpy((char*)newData + recordSize, attr.defaultValue, attr.attrLength);
+		if (attr.defaultValue)
+			memcpy((char*)newData + recordSize, attr.defaultValue, attr.attrLength);
 		newrm->insertRec(newData, id);
 		delete [] newData;
 	}
@@ -1030,7 +1031,6 @@ void SysManager::ChangeColumn(const string tableName, string oldAttrName, AttrIn
 		} else if (newAttr.attrType == INT || newAttr.attrType == DATE) {
 			if (oldAttr.attrType == STRING) {
 				*(int*)&newData[oldAttr.offset] = stoi((char*)&data[oldAttr.offset]);
-				cout << *(int*)&newData[oldAttr.offset] << endl;
 			} else if (oldAttr.attrType == INT || oldAttr.attrType == DATE) {
 				*(int*)&newData[oldAttr.offset] = *(int*)&data[oldAttr.offset];
 			} else { // oldAttr.attrType == FLOAT
