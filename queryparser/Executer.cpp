@@ -157,13 +157,15 @@ void Executer::execTbStmt(tbStmt *stmt)
         // CREATE TABLE <tbName> ’(’<fieldList>’)’
         // for(int i = 0;i < stmt->tableInfo->attrNum;i++)
         //     printf("col %d :%s\n",i,stmt->tableInfo->attrs[i].attrName.c_str());
-        // 设置主键,只支持单列主键
+        // 设置主键
         if(stmt->pk != nullptr) {
-            string pkname = stmt->pk->namelist[0]; 
-            for(int i = 0;i < stmt->tableInfo->attrNum;i++) {
-                if(stmt->tableInfo->attrs[i].attrName == pkname){
-                    stmt->tableInfo->attrs[i].primary = true;
-                    stmt->tableInfo->attrs[i].notNull = true;
+            for(int i = 0;i < stmt->pk->namelist.size();i++) {
+                string pkname = stmt->pk->namelist[i]; 
+                for(int j = 0;j < stmt->tableInfo->attrNum;j++) {
+                    if(stmt->tableInfo->attrs[j].attrName == pkname){
+                        stmt->tableInfo->attrs[j].primary = true;
+                        stmt->tableInfo->attrs[j].notNull = true;
+                    }
                 }
             }
         }
