@@ -98,8 +98,7 @@ extern int yydebug;
     VALUE_INT = 304,
     VALUE_FLOAT = 305,
     VALUE_STRING = 306,
-    VALUE_DATE = 307,
-    IDENTIFIER = 308
+    IDENTIFIER = 307
   };
 #endif
 /* Tokens.  */
@@ -152,8 +151,7 @@ extern int yydebug;
 #define VALUE_INT 304
 #define VALUE_FLOAT 305
 #define VALUE_STRING 306
-#define VALUE_DATE 307
-#define IDENTIFIER 308
+#define IDENTIFIER 307
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
@@ -174,7 +172,7 @@ union YYSTYPE
     CompOp compop;
     Assigns* assigns;
 
-#line 178 "y.tab.h"
+#line 176 "y.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
