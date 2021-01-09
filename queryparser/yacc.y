@@ -156,7 +156,10 @@ tbStmt:
        }
     | DESC tbName
        {
-          //TODO:还没有相应的底层函数
+          tbStmt* stmt = new tbStmt(tbStmt::TB_DESC);
+          stmt->tbName = $2;
+          executer->execTbStmt(stmt);
+          delete stmt;
        }
     | INSERT INTO tbName VALUES valueLists
        {

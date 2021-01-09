@@ -167,6 +167,7 @@ void Executer::execTbStmt(tbStmt *stmt)
     }
     case tbStmt::TB_DESC:
     {
+        smm->Show(stmt->tbName);
         break;
     }
     case tbStmt::TB_INSERT:

@@ -41,6 +41,35 @@ void SysManager::Show() {
 	}
 }
 
+void SysManager::Show(const string tableName) {
+	int tableID = _fromNameToID(tableName);
+	if (tableID == -1) {
+		fprintf(stderr, "Error: table does not exist!\n");
+		return;
+	}
+	cout << "Table " << _tables[tableID].tableName << ":" << endl;
+	for (int attrID = 0; attrID < _tables[tableID].attrNum; attrID++) {
+		cout << _tables[tableID].attrs[attrID].attrName << " ";
+		if (_tables[tableID].attrs[attrID].attrType == INT) cout << "INT";
+		else if (_tables[tableID].attrs[attrID].attrType == DATE) cout << "DATE";
+		else if (_tables[tableID].attrs[attrID].attrType == FLOAT) cout << "FLOAT";
+		else if (_tables[tableID].attrs[attrID].attrType == STRING) cout << "CHAR(" << _tables[tableID].attrs[attrID].attrLength << ")";
+		if (_tables[tableID].attrs[attrID].notNull) cout << " NOT NULL";
+		if (_tables[tableID].attrs[attrID].primary) cout << " PRIMARY KEY";
+		if (_tables[tableID].attrs[attrID].defaultValue != nullptr) {
+			if (_tables[tableID].attrs[attrID].attrType == INT) cout << " DEFAULT " << *(int*)_tables[tableID].attrs[attrID].defaultValue;
+			else if (_tables[tableID].attrs[attrID].attrType == DATE) cout << " DEFAULT " << *(int*)_tables[tableID].attrs[attrID].defaultValue;
+			else if (_tables[tableID].attrs[attrID].attrType == FLOAT) cout << " DEFAULT " << *(double*)_tables[tableID].attrs[attrID].defaultValue;
+			else if (_tables[tableID].attrs[attrID].attrType == STRING) cout << " DEFAULT '" << (char*)_tables[tableID].attrs[attrID].defaultValue << "'";
+		}
+		if (_tables[tableID].attrs[attrID].reference != "") {
+			cout << " REFERENCES " << _tables[tableID].attrs[attrID].reference << "(" << _tables[tableID].attrs[attrID].foreignKeyName << ")";
+		}
+		cout << endl;
+	}
+	cout << endl;
+}
+
 void SysManager::OpenDB(const string DBName) {
 	_DBName.assign(DBName);
 	chdir(DBName.c_str());

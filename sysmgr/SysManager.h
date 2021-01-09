@@ -49,6 +49,7 @@ public:
 	void OpenDB(const string DBName);
 	void CloseDB();
 	void Show();
+	void Show(const string tableName);
 	void CreateTable(TableInfo* table);
 	void DropTable(const string tableName);
 	void CreateIndex(const string idxName, const string tableName, const vector<string> attrs);
