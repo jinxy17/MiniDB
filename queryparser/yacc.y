@@ -222,8 +222,8 @@ idxStmt:
     | DROP INDEX idxName
        {
           idxStmt* stmt = new idxStmt(idxStmt::IDX_DROP);
-          executer->execIdxStmt(stmt);
           stmt->idxName = $3;
+          executer->execIdxStmt(stmt);
           delete stmt;
        }
 	| ALTER TABLE tbName ADD INDEX idxName '(' columnList ')'

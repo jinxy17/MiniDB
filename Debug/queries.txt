@@ -1,0 +1,21 @@
+CREATE DATABASE orderDB;
+SHOW DATABASES;
+DROP DATABASE orderDB;
+SHOW DATABASES;
+
+CREATE DATABASE orderDB;
+USE orderDB;
+
+CREATE TABLE nation(n_nationkey INT NOT NULL, n_name VARCHAR(25) NOT NULL, n_regionkey  INT NOT NULL, n_comment VARCHAR(152));
+SHOW TABLES;
+DESC nation;
+INSERT INTO nation VALUES (86, 'China', 0, '');
+INSERT INTO nation VALUES (86, 'China', 0, '');
+INSERT INTO nation VALUES (87, 'China', 0, '');
+SELECT * FROM nation WHERE n_nationkey IS NOT NULL AND n_regionkey = 0; 
+DELETE FROM nation WHERE n_nationkey = 86;
+UPDATE nation SET n_nationkey = 78 WHERE n_nationkey IS NOT NULL;
+
+CREATE INDEX idx ON nation (n_nationkey);
+DROP INDEX idx;
+ALTER TABLE nation DROP INDEX idx;
