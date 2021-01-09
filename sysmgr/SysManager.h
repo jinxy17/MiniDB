@@ -22,6 +22,14 @@ struct AttrInfo {
 	string foreignKeyName; // attr to be referenced, must be primary
 	bool haveIndex;
 	int offset; // 4 bytes, completed by SM
+
+	//仅为了适应语法,支持创建表时设置PRIMARY KEY,这是一个简便但本不合理的实现
+	bool createPk = false;
+	vector<string> namelist;
+	//仅为了适应语法,支持创建表时设置FOREIGN KEY,这是一个简便但本不合理的实现
+	bool createFk = false;
+	//列名表名沿用上面的成员变量,但其内涵完全不同;
+	//实际实现冲发现createPk/createFk为True则直接调用Alter语句
 };
 
 struct TableInfo {

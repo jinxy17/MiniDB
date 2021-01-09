@@ -139,6 +139,7 @@ tbStmt:
 			 stmt->tableInfo->tableName = stmt->tbName;
           stmt->tableInfo->recordSize = 0;
           stmt->tableInfo->attrs.clear();
+          //TODO: 添加对PK和FK的处理
           for(int i = 0;i < $5->attrinfos.size();i++) {
              stmt->tableInfo->attrs.push_back(*$5->attrinfos[i]);
           }
@@ -388,25 +389,16 @@ field:
        }
     | PRIMARY KEY '(' columnList ')'
        {
-         //TODO:多行主键
-         //  $$ = new AttrInfo();
-         //  $$->attrName = $1;
-	      //  $$->attrType = $2->dtype;
-         //  $$->attrLength = $2->setlength;
-	      //  $$->notNull = false;
-	      //  $$->primary = false;
-	      //  $$->haveIndex = false;
+         $$ = new AttrInfo();
+         $$->namelist.assign($4->namelist.begin(),$4->namelist.end());
+         $$->createPk = true;
        }
     | FOREIGN KEY '(' colName ')' REFERENCES tbName '(' colName ')'
        {
-         //TODO:外键没有类型信息
-         //  $$ = new AttrInfo();
-         //  $$->attrName = $4;
-	      //  $$->attrType = $2->dtype;
-         //  $$->attrLength = $2->setlength;
-	      //  $$->notNull = false;
-	      //  $$->primary = false;
-	      //  $$->haveIndex = false;
+         $$ = new AttrInfo();
+         $$->attrName = $4;
+	      $$->reference = $7;
+         $$->foreignKeyName = $9; 
        }
     ;
 
@@ -421,7 +413,8 @@ type:
        }
     | KWDATE
        {
-          $$ = new DataType(DATE,8);
+          //DATE直接用String表示似乎更方便快捷
+          $$ = new DataType(STRING,12);
        }
     | KWFLOAT
        {
@@ -476,7 +469,7 @@ value:
          *d = $1;
          $$ = new Value(INT,(BufType)d);
        }
-	| VALUE_FLOAT
+	 | VALUE_FLOAT
        {
           //printf("value float:%f \n",$1);
           double *f = new double;
