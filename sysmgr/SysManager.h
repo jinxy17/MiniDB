@@ -57,6 +57,7 @@ public:
 	void OpenDB(const string DBName);
 	void CloseDB();
 	void Show();
+	void Show(const string tableName);
 	void CreateTable(TableInfo* table);
 	void DropTable(const string tableName);
 	void CreateIndex(const string idxName, const string tableName, const vector<string> attrs);
@@ -70,6 +71,7 @@ public:
 	void DropColumn(const string tableName, string attrName);
 	void RenameColumn(const string tableName, string oldAttrName, string newAttrName);
 	void ChangeColumn(const string tableName, string oldAttrName, AttrInfo newAttr);
+	void RenameTable(const string tableName, const string newTableName);
 	
 	void _CreateIndex(const string tableName, const string attr);
 	void _DropIndex(const string tableName, const string attr);

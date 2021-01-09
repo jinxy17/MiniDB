@@ -167,6 +167,7 @@ void Executer::execTbStmt(tbStmt *stmt)
     }
     case tbStmt::TB_DESC:
     {
+        smm->Show(stmt->tbName);
         break;
     }
     case tbStmt::TB_INSERT:
@@ -296,7 +297,7 @@ void Executer::execAlterStmt(alterStmt *stmt)
     }
     case alterStmt::ALTER_RENAME:
     {   
-        //smm->RenameColumn(stmt->tbName, stmt->newtbName);
+        smm->RenameTable(stmt->tbName, stmt->newtbName);
         break;
     }
     case alterStmt::ALTER_DROP_PRIMARY:

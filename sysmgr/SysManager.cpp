@@ -41,6 +41,35 @@ void SysManager::Show() {
 	}
 }
 
+void SysManager::Show(const string tableName) {
+	int tableID = _fromNameToID(tableName);
+	if (tableID == -1) {
+		fprintf(stderr, "Error: table does not exist!\n");
+		return;
+	}
+	cout << "Table " << _tables[tableID].tableName << ":" << endl;
+	for (int attrID = 0; attrID < _tables[tableID].attrNum; attrID++) {
+		cout << _tables[tableID].attrs[attrID].attrName << " ";
+		if (_tables[tableID].attrs[attrID].attrType == INT) cout << "INT";
+		else if (_tables[tableID].attrs[attrID].attrType == DATE) cout << "DATE";
+		else if (_tables[tableID].attrs[attrID].attrType == FLOAT) cout << "FLOAT";
+		else if (_tables[tableID].attrs[attrID].attrType == STRING) cout << "CHAR(" << _tables[tableID].attrs[attrID].attrLength << ")";
+		if (_tables[tableID].attrs[attrID].notNull) cout << " NOT NULL";
+		if (_tables[tableID].attrs[attrID].primary) cout << " PRIMARY KEY";
+		if (_tables[tableID].attrs[attrID].defaultValue != nullptr) {
+			if (_tables[tableID].attrs[attrID].attrType == INT) cout << " DEFAULT " << *(int*)_tables[tableID].attrs[attrID].defaultValue;
+			else if (_tables[tableID].attrs[attrID].attrType == DATE) cout << " DEFAULT " << *(int*)_tables[tableID].attrs[attrID].defaultValue;
+			else if (_tables[tableID].attrs[attrID].attrType == FLOAT) cout << " DEFAULT " << *(double*)_tables[tableID].attrs[attrID].defaultValue;
+			else if (_tables[tableID].attrs[attrID].attrType == STRING) cout << " DEFAULT '" << (char*)_tables[tableID].attrs[attrID].defaultValue << "'";
+		}
+		if (_tables[tableID].attrs[attrID].reference != "") {
+			cout << " REFERENCES " << _tables[tableID].attrs[attrID].reference << "(" << _tables[tableID].attrs[attrID].foreignKeyName << ")";
+		}
+		cout << endl;
+	}
+	cout << endl;
+}
+
 void SysManager::OpenDB(const string DBName) {
 	_DBName.assign(DBName);
 	chdir(DBName.c_str());
@@ -367,6 +396,13 @@ void SysManager::DropTable(const string tableName) {
 	system(("rm " + _tables[tableID].tableName + ".*").c_str());
 	_tables.erase(_tables.begin() + tableID);
 	_tableNum--;
+	for (auto it = _indexes.begin(); it != _indexes.end(); ) {
+		if (it->second.first == tableName){
+			_indexes.erase(it++);
+		} else {
+			it++;
+		}
+	}
 }
 
 void SysManager::_CreateIndex(const string tableName, const string attr) {
@@ -1041,6 +1077,35 @@ void SysManager::ChangeColumn(const string tableName, string oldAttrName, AttrIn
 		_tables[tableID].primary.clear();
 		_tables[tableID].primarySize = 0;
 		AddPrimaryKey(tableName, attrs);
+	}
+}
+
+void SysManager::RenameTable(const string oldTableName, const string newTableName) {
+	int tableID = _fromNameToID(oldTableName);
+	if (tableID == -1) {
+		fprintf(stderr, "Error: invalid table!\n");
+		return;
+	}
+	if (_checkForeignKeyOnTable(tableID)) {
+		fprintf(stderr, "Error: foreign key on the table!\n");
+		return;
+	}
+	if (fileManager->closeFile(_tableFileID[_tables[tableID].tableName])) {
+		fprintf(stderr, "Error: failed to close table file!\n");
+		return;
+	}
+	char replace[256];
+	sprintf(replace, "for var in %s.*; do mv \"$var\" \"%s.${var##%s.}\"; done", oldTableName.c_str(), newTableName.c_str(), oldTableName.c_str());
+	system(replace);
+	system(("mv " + oldTableName + " " + newTableName).c_str());
+	_tables[tableID].tableName = newTableName;
+	int fileID;
+	fileManager->openFile(newTableName.c_str(), fileID);
+	_tableFileID[newTableName] = fileID;
+	for (auto [i, j] : _indexes) {
+		if (j.first == oldTableName) {
+			_indexes[i].first = newTableName;
+		}
 	}
 }
 
