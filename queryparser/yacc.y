@@ -427,7 +427,7 @@ type:
        }
     | VARCHAR type_width
        {
-          printf("type_width:%d\n",$2);
+          //printf("type_width:%d\n",$2);
           $$ = new DataType(STRING,$2);
        }
     | KWDATE
@@ -497,7 +497,7 @@ value:
        }
     | VALUE_STRING
        {
-          printf("string:%s\n",$1);
+          //printf("string:%s\n",$1);
           $$ = new Value(STRING,(BufType)$1);
        }
     | KWNULL

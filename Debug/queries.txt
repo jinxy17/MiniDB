@@ -7,15 +7,54 @@ CREATE DATABASE orderDB;
 USE orderDB;
 
 CREATE TABLE nation(n_nationkey INT NOT NULL, n_name VARCHAR(25) NOT NULL, n_regionkey  INT NOT NULL, n_comment VARCHAR(152));
+
 SHOW TABLES;
 DESC nation;
 INSERT INTO nation VALUES (86, 'China', 0, '');
 INSERT INTO nation VALUES (86, 'China', 0, '');
 INSERT INTO nation VALUES (87, 'China', 0, '');
+INSERT INTO nation VALUES (88, 'China', 0, '');
+INSERT INTO nation VALUES (89, 'China', 0, '');
+INSERT INTO nation VALUES (90, 'China', 0, '');
+INSERT INTO nation VALUES (91, 'China', 0, '');
+INSERT INTO nation VALUES (92, 'China', 0, null);
+INSERT INTO nation VALUES (93, 'China', 0, null);
+INSERT INTO nation VALUES (94, 'China', 3, null);
 SELECT * FROM nation WHERE n_nationkey IS NOT NULL AND n_regionkey = 0; 
+SELECT * FROM nation WHERE n_regionkey = 0; 
 DELETE FROM nation WHERE n_nationkey = 86;
 UPDATE nation SET n_nationkey = 78 WHERE n_nationkey IS NOT NULL;
 
 CREATE INDEX idx ON nation (n_nationkey);
+ALTER TABLE nation ADD INDEX idx (n_name);
 DROP INDEX idx;
 ALTER TABLE nation DROP INDEX idx;
+
+ALTER TABLE nation RENAME TO province;
+ALTER TABLE province RENAME TO nation;
+
+ALTER TABLE nation ADD CONSTRAINT primname PRIMARY KEY (n_nationkey);
+ALTER TABLE nation DROP PRIMARY KEY primname;
+ALTER TABLE nation DROP PRIMARY KEY;
+
+ALTER TABLE nation DROP n_comment;
+ALTER TABLE nation ADD n_comment_new VARCHAR(152);
+ALTER TABLE nation ADD n_nationkey_new INT;
+ALTER TABLE nation CHANGE n_nationkey n_nationkey_changed VARCHAR(25);
+
+CREATE TABLE region(r_regionkey INT NOT NULL);
+ALTER TABLE region ADD CONSTRAINT primname PRIMARY KEY (r_regionkey);
+INSERT INTO region VALUES (1);
+INSERT INTO region VALUES (2);
+INSERT INTO region VALUES (0);
+SELECT * FROM region WHERE r_regionkey IS NOT NULL; 
+ALTER TABLE nation ADD CONSTRAINT fkname FOREIGN KEY(n_regionkey) REFERENCES region(r_regionkey);
+ALTER TABLE nation DROP FOREIGN KEY fkname;
+UPDATE nation SET n_regionkey = 3 WHERE n_nationkey= 87;
+
+
+
+
+
+
+
