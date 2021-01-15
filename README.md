@@ -221,6 +221,8 @@ class SysManager {
 
 
 ## 参考文献
+1. [db-server](https://github.com/ejacky/db-server)
+1. [cs346-redbase](https://github.com/adityabhandari1992/cs346-redbase)
 1. [DBNoC](https://github.com/RecursionSheep/DBNoC)
-2. [redbase](https://github.com/yifeih/redbase) 
+1. [redbase](https://github.com/yifeih/redbase) 
 
