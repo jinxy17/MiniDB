@@ -111,16 +111,20 @@ void Executer::execDbStmt(dbStmt *stmt)
     {
         if(stmt->dbName == currentdb) {
             printf("The Database %s is in use;\n",stmt->dbName.c_str());
-        }else if(access(stmt->dbName.c_str(),F_OK) != -1) {
-            // USE <dbName>
-            currentdb = stmt->dbName;
-            smm->OpenDB(currentdb);
-            printf("Open Database %s;\n",currentdb.c_str());
-            return;
-        } else {
-            // 数据库不存在
-            printf("The database %s does not exist.\n",stmt->dbName.c_str());
-            return;
+        }else {
+            if(currentdb != "")  smm->CloseDB();
+            if(access(stmt->dbName.c_str(),F_OK) != -1) {
+                // USE <dbName>
+                // 暂时关闭数据库
+                currentdb = stmt->dbName;
+                smm->OpenDB(currentdb);
+                printf("Open Database %s;\n",currentdb.c_str());
+                return;
+            } else {
+                // 数据库不存在
+                printf("The database %s does not exist.\n",stmt->dbName.c_str());
+                return;
+            }
         }
         break;
     }
@@ -198,6 +202,31 @@ void Executer::execTbStmt(tbStmt *stmt)
     }
     case tbStmt::TB_INSERT:
     {   
+        //INSERT INTO NATION VALUES (0,'America',0, 'nothing left');
+        //INSERT INTO NATION VALUES  ('id86','America',0, 'nothing left');
+        //INSERT INTO ORDERS VALUES (127664,315000,'F',6.5,'2018/2/29',0,'Clerk101',1,'nice service');
+        //SELECT * FROM CUSTOMER WHERE C_CUSTKEY=5;
+        //DELETE FROM CUSTOMER WHERE C_CUSTKEY=5;
+        //SELECT PS_AVAILQTY,PS_PARTKEY FROM PARTSUPP WHERE PS_PARTKEY=12;
+        //UPDATE PARTSUPP SET PS_AVAILQTY=8774 WHERE PS_PARTKEY=12;
+        //SELECT C_NATIONKEY FROM CUSTOMER WHERE C_NATIONKEY<1;
+        //SELECT C_NATIONKEY FROM CUSTOMER WHERE C_NATIONKEY<10;
+        //SELECT O_ORDERDATE,O_TOTALPRICE FROM ORDERS WHERE O_ORDERDATE='1996-1-2';
+        //SELECT CUSTOMER.C_PHONE,ORDERS.O_ORDERSTATUS,CUSTOMER.C_NAME FROM CUSTOMER,ORDERS WHERE CUSTOMER.C_CUSTKEY=ORDERS.O_CUSTKEY AND CUSTOMER.C_NAME='Customer#000000001';
+        //UPDATE NATION SET N_REGIONKEY=316001 WHERE N_NATIONKEY=15;
+        //ALTER TABLE NATION ADD n_comment_2 VARCHAR(32);
+        //ALTER TABLE NATION DROP n_comment_2;
+        //ALTER TABLE NATION DROP PRIMARY KEY;
+        //ALTER TABLE NATION ADD CONSTRAINT pk1 PRIMARY KEY (N_NATIONKEY);
+        //ALTER TABLE NATION ADD CONSTRAINT NATION_FK1 FOREIGN KEY (N_REGIONKEY) REFERENCES REGION(R_REGIONKEY);
+        //ALTER TABLE NATION DROP FOREIGN KEY NATION_FK1;
+        //ALTER TABLE NATION RENAME TO province;
+        //ALTER TABLE CUSTOMER ADD INDEX Idx_residual (C_ACCTBAL)
+        //ALTER TABLE CUSTOMER DROP INDEX Idx_residual;
+
+        //CREATE INDEX IdX_NATION ON CUSTOMER (C_NATIONKEY);
+
+
         //INSERT INTO tb VALUES (1,1.5,10), (2,2.5,12),(3,3.5,15)
         //INSERT INTO tb1 VALUES (1,1.5,10), (2,2.5,12),(3,3.5,15)
         //INSERT INTO tb2 VALUES (1,1.5,10), (2,2.5,12),(3,3.5,15)
@@ -261,7 +290,14 @@ void Executer::execTbStmt(tbStmt *stmt)
         break;
     }
     case tbStmt::TB_LOAD:{
-        //LOAD CUSTOMER FROM 'customer.tbl';
+        //LOAD PART FROM 'part.tbl.csv';
+        //LOAD REGION FROM 'region.tbl.csv';
+        //LOAD NATION FROM 'nation.tbl.csv';
+        //LOAD SUPPLIER FROM 'supplier.tbl';
+        //LOAD CUSTOMER FROM 'customer.tbl.csv';
+        //LOAD PARTSUPP FROM 'partsupp.tbl.csv';
+        //LOAD ORDERS FROM 'orders.tbl.csv';
+        //LOAD LINEITEM FROM 'lineitem.tbl.csv';
         printf("Load data to tablle %s from %s\n",stmt->tbName.c_str(),stmt->filename.c_str());
         //当前工作目录是某个数据库目录下,因此..回到.MiniDB,../..回到Debug,../../..回到项目根目录
         string filepath = "../../../data/" + stmt->filename;
@@ -270,7 +306,9 @@ void Executer::execTbStmt(tbStmt *stmt)
 	    int i = 0;
 	    while (fgets(line, 1024, stream) != NULL)//逐行读取
         {
-            printf("%s",line);
+            i++;
+            if(i % 10 == 0)
+                printf("%s",line);
             qlm->Load(stmt->tbName,line);
             memset(line,0,1024 * sizeof(char));
         }

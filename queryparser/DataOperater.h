@@ -5,77 +5,27 @@
 #include "../recmgr/RecManager.h"
 #include "../idxmgr/IndexManager.h"
 #include "../sysmgr/SysManager.h"
+#include "Stmt.h"
 #include <vector>
 #include <string>
-
-enum CompOp {
-	NO_OP, EQ_OP, NE_OP, LT_OP, GT_OP, LE_OP, GE_OP, IS_NULL, IS_NOT_NULL
-};
-
-struct DataType {
-    int dtype;
-    int setlength;
-    DataType(int _dtype,int _setlength):dtype(_dtype),setlength(_setlength){};
-};
-
-struct Tcol {
-    string tablename;
-    string colname;
-    Tcol(string _tablename,string _colname):tablename(_tablename),colname(_colname){};
-};
-
-struct Value {
-    int datatype;
-    BufType data;
-    Value(int _datatype,BufType _data):datatype(_datatype),data(_data){};
-};
-
-struct Relation {
-	string table1;
-	string attr1;
-	string table2;
-	string attr2;
-	Value* value;
-	CompOp op;
-};
-
-struct Assigns {
-	string table;
-	vector<string> attrs;
-	vector<Value*> values;
-	//在添加了DNULL类型后assignnull实际为冗余成员
-	vector<bool> assignnull;
-};
-
-struct Assign {
-	string table;
-	string attr;
-	Value* value;
-	bool assignnull;
-};
 
 class DataOperater {
 public:
 	FileManager *fileManager;
 	BufPageManager *bufPageManager;
-	
-	DataOperater(SysManager *smm, IndexManager *ixm, FileManager *_fileManager, BufPageManager *_bufPageManager);
+	SysManager *systemmgr;
+	IndexManager *indexmgr;
+
+	DataOperater(SysManager *smm, IndexManager *ixm, FileManager *fileManager, BufPageManager *bufPageManager);
 	~DataOperater();
 	
     //插入一条数据
 	bool Insert(const string tableName, vector<Value*> insertvalues, vector<int> columns,int nullcolumnnub);
-	void Update(const Assign assign, vector<Relation*> relations);
+	//插入一条数据
 	void Update(const Assigns assigns, vector<Relation*> relations);
 	void Delete(const string tableName, vector<Relation*> relations);
 	void Select(const string tableName, vector<Relation*> relations, vector<string> attrNames);
 	void Select(vector<string> tableNames, vector<Tcol*> cols, vector<Relation *> relations);
-	// void Load(const string tableName, const string fileName);
-
-	bool _compare(BufType data1, BufType data2, CompOp op, int type);
 	void Load(const string tableName,const char* line);
-	
-private:
-	SysManager *_smm;
-	IndexManager *_ixm;
-	RecManager *_rmm;
+
 };

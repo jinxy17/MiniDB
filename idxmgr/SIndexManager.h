@@ -59,11 +59,12 @@ public:
 
     //比较两个key值的大小,若大小相同则进一步比较其存储位置,返回key1<key2
     bool compare(void* key1, void* key2, int page1, int page2,int offset1, int offset2);
-    //只进行键值比较,返回key1<key2
+    //只进行键值比较,返回key1=key2
     bool compareKeyEq(void *key1, void *key2);
+    //只进行键值比较,返回key1<key2
     bool compareKeyLt(void *key1, void *key2);
+    //只进行键值比较,返回key1<=key2
     bool compareKeyLe(void *key1, void *key2);
-
     bool Exists(void *key);
 
     //索引Scan
@@ -74,9 +75,7 @@ public:
 	
     void Print_Tree();
     int Print_Node(int nodeID,int dep);
-
 	int scan_nodeID, scan_entryID;
-
 };
 
 

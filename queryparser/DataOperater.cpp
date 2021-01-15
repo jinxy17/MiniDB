@@ -1,19 +1,171 @@
 #include "DataOperater.h"
 #include <string>
-#include <vector>
 #include <cstring>
+#include <cassert>
 #include <algorithm>
 #include <fstream>
-#include <cassert>
+#include <vector>
 using namespace std;
+set<int> initial;
+set<pair<int, int>> attrset;
+map<int, set<int>> attrmap;
+
+bool compare_string(BufType data1, BufType data2, CompOp op)
+{
+	int result = strcmp((char *)data1, (char *)data2);
+
+	switch (op)
+	{
+	case EQ_OP:
+	{
+		return result == 0;
+		break;
+	}
+	case NE_OP:
+	{
+		return result != 0;
+		break;
+	}
+	case LT_OP:
+	{
+		return result < 0;
+		break;
+	}
+	case GT_OP:
+	{
+		return result > 0;
+		break;
+	}
+	case LE_OP:
+	{
+		return result <= 0;
+		break;
+	}
+	case GE_OP:
+	{
+		return result >= 0;
+		break;
+	}
+	default:
+	{
+		return false;
+		break;
+	}
+	}
+}
+
+bool compare_int(BufType data1, BufType data2, CompOp op)
+{
+	int d1 = *(int *)data1;
+	int d2 = *(int *)data2;
+	switch (op)
+	{
+	case EQ_OP:
+	{
+		return d1 == d2;
+		break;
+	}
+	case NE_OP:
+	{
+		return d1 != d2;
+		break;
+	}
+	case LT_OP:
+	{
+		return d1 < d2;
+		break;
+	}
+	case GT_OP:
+	{
+		return d1 > d2;
+		break;
+	}
+	case LE_OP:
+	{
+		return d1 <= d2;
+		break;
+	}
+	case GE_OP:
+	{
+		return d1 >= d2;
+		break;
+	}
+	default:
+	{
+		return false;
+		break;
+	}
+	}
+}
+
+bool compare_float(BufType data1, BufType data2, CompOp op)
+{
+	float d1 = *(float *)data1;
+	float d2 = *(float *)data2;
+	switch (op)
+	{
+	case EQ_OP:
+	{
+		return d1 == d2;
+		break;
+	}
+	case NE_OP:
+	{
+		return d1 != d2;
+		break;
+	}
+	case LT_OP:
+	{
+		return d1 < d2;
+		break;
+	}
+	case GT_OP:
+	{
+		return d1 > d2;
+		break;
+	}
+	case LE_OP:
+	{
+		return d1 <= d2;
+		break;
+	}
+	case GE_OP:
+	{
+		return d1 >= d2;
+		break;
+	}
+	default:
+	{
+		return false;
+		break;
+	}
+	}
+}
+
+bool comparedata(BufType data1, BufType data2, CompOp op, int type)
+{
+	if (type == STRING)
+		return compare_string(data1, data2, op);
+	else if (type == INT)
+		return compare_string(data1, data2, op);
+	else if (type == FLOAT)
+		return compare_string(data1, data2, op);
+	else
+		return false;
+}
 
 DataOperater::DataOperater(SysManager *smm, IndexManager *ixm, FileManager *_fileManager, BufPageManager *_bufPageManager)
 {
-	_smm = smm;
-	_ixm = ixm;
-	fileManager = _fileManager;
-	bufPageManager = _bufPageManager;
+	this->fileManager = fileManager;
+	this->systemmgr = smm;
+	this->indexmgr = ixm;
+	this->bufPageManager = bufPageManager;
+
+	initial.clear();
+	attrmap.clear();
+	attrset.clear();
 }
+
 DataOperater::~DataOperater() {}
 
 //插入一条数据,values为插入数据值,cloumns为对应列号(插入null没有列号),nullcolumnnub为null数据列数
@@ -21,33 +173,36 @@ bool DataOperater::Insert(const string tableName, vector<Value *> insertvalues, 
 {
 	// printf("Insert into %s ,nullcolnub:%d\n",tableName.c_str(),nullcolumnnub);
 	assert(insertvalues.size() == columns.size());
-	int tableID = _smm->_fromNameToID(tableName);
+	int tableID = this->systemmgr->_fromNameToID(tableName);
 	if (tableID == -1)
 	{
-		fprintf(stderr, "Error: such table does not exist!\n");
+		printf("Error: such table does not exist!\n");
 		return 0;
 	}
 	// printf("tableID:%d\n",tableID);
-	vector<AttrInfo> attrsinfos = _smm->_tables[tableID].attrs;
+	vector<AttrInfo> attrsinfos = this->systemmgr->_tables[tableID].attrs;
 
 	// 非空列数目+空列数 必须等于 列数目
 	int attrNum = columns.size();
-	if (attrNum + nullcolumnnub != _smm->_tables[tableID].attrNum)
+	if (attrNum + nullcolumnnub != this->systemmgr->_tables[tableID].attrNum)
 	{
-		fprintf(stderr, "Error: invalid values number!\n");
+		printf("Error: invalid values number!\n");
 		return 0;
 	}
 
-	// 1.存在外键,不能直接插入
-	for (int i = 0; i < _smm->_tableNum; i++)
-		if (i != tableID)
+	// 存在外键,不能插入
+	for (int i = 0; i < this->systemmgr->_tableNum; i++)
+	{
+		if (i - tableID != 0)
 		{
-			if (_smm->_tables[i].foreignSet.find(tableName) != _smm->_tables[i].foreignSet.end())
+			if (this->systemmgr->_tables[i].foreignSet.find(tableName) != this->systemmgr->_tables[i].foreignSet.end())
 			{
-				fprintf(stderr, "Error: foreign keys on the table!\n");
-				return 0;
+				printf("不符合外键约束!\n");
+				return false;
 			}
 		}
+	}
+
 	vector<string> attrs;
 	vector<BufType> values;
 	for (int i = 0; i < columns.size(); i++)
@@ -111,41 +266,15 @@ bool DataOperater::Insert(const string tableName, vector<Value *> insertvalues, 
 	}
 	//printf("\n");
 
-	BufType data = new unsigned int[_smm->_tables[tableID].recordSize >> 2];
+	BufType data = new unsigned int[this->systemmgr->_tables[tableID].recordSize >> 2];
 	unsigned long long *bitmap = (unsigned long long *)data;
 	bitmap[0] = 0;
-	// 设置默认值的代码,因为文法只有显式null,所以默认值已经无效,这段代码相应删除
-	// for (int i = 0; i < _smm->_tables[tableID].attrNum; i++) if (attrsinfos[i].defaultValue != nullptr) {
-	// 	int attrID = i;
-	// 	BufType value = attrsinfos[i].defaultValue;
-	// 	bitmap[0] |= 1ull << attrID;
-	// 	if (attrsinfos[attrID].attrType == INT) {
-	// 		assert(attrsinfos[attrID].attrLength == 4);
-	// 		int d = *(int*)value;
-	// 		memcpy(data + attrsinfos[attrID].offset, &d, 4);
-	// 	} else if (attrsinfos[attrID].attrType == FLOAT) {
-	// 		assert(attrsinfos[attrID].attrLength == 8);
-	// 		double dd = *(double*)value;
-	// 		memcpy(data + attrsinfos[attrID].offset, &dd, 8);
-	// 	} else if (attrsinfos[attrID].attrType == STRING) {
-	// 		char *ddd = (char*)value;
-	// 		int size = strlen(ddd);
-	// 		memset(data + attrsinfos[attrID].offset, 0, sizeof(char) * attrsinfos[attrID].attrLength);
-	// 		//fill(data + attrsinfos[attrID].offset, data + attrsinfos[attrID].offset + (attrsinfos[attrID].attrLength >> 2), 0);
-	// 		// 把字符串长度设定为表定义的长度，注意末尾\0
-	// 		if (size >= attrsinfos[attrID].attrLength) {
-	// 			size = attrsinfos[attrID].attrLength;
-	// 			ddd[size - 1] = '\0';
-	// 		}
-	// 		memcpy(data + attrsinfos[attrID].offset, ddd, size);
-	// 	}
-	// }
 	for (int i = 0; i < attrNum; i++)
 	{
-		int attrID = _smm->_fromNameToID(attrs[i], tableID);
+		int attrID = this->systemmgr->_fromNameToID(attrs[i], tableID);
 		if (attrID == -1)
 		{
-			fprintf(stderr, "Error: invalid column name!\n");
+			printf("Error: invalid column name!\n");
 			delete[] data;
 			return 0;
 		}
@@ -176,80 +305,30 @@ bool DataOperater::Insert(const string tableName, vector<Value *> insertvalues, 
 			memcpy(data + attrsinfos[attrID].offset, ddd, size);
 		}
 	}
-	for (int i = 0; i < _smm->_tables[tableID].attrNum; i++)
+	for (int i = 0; i < this->systemmgr->_tables[tableID].attrNum; i++)
 	{
 		if (attrsinfos[i].notNull && ((bitmap[0] & (1ull << i)) == 0))
 		{
-			fprintf(stderr, "Error: some NOT-NULL columns are null!\n");
+			printf("Error: some NOT-NULL columns are null!\n");
 			delete[] data;
 			return 0;
 		}
 	}
 	// 若有主键,则需检查主键是否重复
-	int primary_size = _smm->_tables[tableID].primarySize;
+	int primary_size = this->systemmgr->_tables[tableID].primarySize;
 	BufType primaryData = nullptr;
 	if (primary_size != 0)
 	{
-		primaryData = _smm->_getPrimaryKey(tableID, data);
+		primaryData = this->systemmgr->_getPrimaryKey(tableID, data);
 		int indexFileID;
-		_ixm->OpenIndex((tableName + ".primary").c_str(), indexFileID);
+		this->indexmgr->OpenIndex((tableName + ".primary").c_str(), indexFileID);
 		SIndexManager *sindexhandle = new SIndexManager(bufPageManager, indexFileID);
 		bool check = sindexhandle->Exists(primaryData);
 		delete sindexhandle;
-		_ixm->CloseIndex(indexFileID);
+		this->indexmgr->CloseIndex(indexFileID);
 		if (check)
 		{
-			fprintf(stderr, "Error: repetitive primary keys!\n");
-			delete[] data;
-			if (primaryData != nullptr)
-				delete[] primaryData;
-			return 0;
-		}
-	}
-	// 遍历所有外键
-	for (int i = 0; i < _smm->_tables[tableID].foreignNum; i++)
-	{
-		string refName = _smm->_tables[tableID].foreign[i];
-		int refID = _smm->_fromNameToID(refName);
-		int refSize = _smm->_tables[refID].primarySize;
-		BufType refData = new unsigned int[refSize >> 2];
-		// 遍历ref表的所有主键，pos记录当前主键在主键索引中的offset
-		int pos = 0;
-		for (int j = 0; j < _smm->_tables[refID].primary.size(); j++)
-		{
-			string primaryName = _smm->_tables[refID].attrs[_smm->_tables[refID].primary[j]].attrName;
-			int attr = -1;
-			// 查找tableID里的对应列
-			for (int k = 0; k < _smm->_tables[tableID].attrNum; k++)
-			{
-				if (attrsinfos[k].reference == refName && attrsinfos[k].foreignKeyName == primaryName)
-				{
-					attr = k;
-					break;
-				}
-			}
-			if (attr == -1)
-			{
-				fprintf(stderr, "Error: foreign keys are not complete!\n");
-				delete[] data;
-				if (primaryData != nullptr)
-					delete[] primaryData;
-				delete[] refData;
-				return 0;
-			}
-			memcpy(refData + pos, data + attrsinfos[attr].offset, attrsinfos[attr].attrLength);
-			pos += (attrsinfos[attr].attrLength >> 2);
-		}
-		int indexFileID;
-		_ixm->OpenIndex((refName + ".primary").c_str(), indexFileID);
-		SIndexManager *sindexhandle = new SIndexManager(bufPageManager, indexFileID);
-		bool check = sindexhandle->Exists(refData);
-		delete sindexhandle;
-		_ixm->CloseIndex(indexFileID);
-		delete[] refData;
-		if (!check)
-		{
-			fprintf(stderr, "Error: invalid foreign keys!\n");
+			printf("Error: repetitive primary keys!\n");
 			delete[] data;
 			if (primaryData != nullptr)
 				delete[] primaryData;
@@ -257,40 +336,64 @@ bool DataOperater::Insert(const string tableName, vector<Value *> insertvalues, 
 		}
 	}
 	unsigned int recID;
-	int fileID = _smm->_tableFileID[tableName];
+	int fileID = this->systemmgr->_tableFileID[tableName];	
 	RecManager *filehandle = new RecManager(bufPageManager, fileID, 0, false);
 	filehandle->insertRec(data, recID);
-	int pageID = recID >> 16;
-	int slotID = recID << 16 >> 16;
-	// printf("pageID:%d,slotID:%d\n",pageID,slotID);
-	if (primary_size != 0)
+	int page = recID >> 16;
+	int offset = recID << 16 >> 16;
+
+	bool hasprimary = (primary_size != 0);
+	int u = page;
+	int v = offset;
+	pair<int, int> u_v;
+	pair<int, int> v_u;
+	u_v.first = u;
+	u_v.second = v;
+	v_u.first = v;
+	v_u.second = u;
+	if (attrset.find(u_v) == attrset.end() && u != v)
+	{
+		attrset.insert(u_v);
+		attrset.insert(v_u);
+		if (u >= 0)
+		{
+			attrmap[u].insert(v);
+		}
+		if (v >= 0)
+		{
+			attrmap[v].insert(u);
+		}
+	}
+	if (attrmap[v].size() == 0)
+		return false;
+
+	if (hasprimary)
 	{
 		int indexFileID;
-		_ixm->OpenIndex((tableName + ".primary").c_str(), indexFileID);
+		this->indexmgr->OpenIndex((tableName + ".primary").c_str(), indexFileID);
 		SIndexManager *sindexhandle = new SIndexManager(bufPageManager, indexFileID);
-		int pageID = recID >> ID_SEGM;
-		int slotID = recID - (pageID << ID_SEGM);
-		sindexhandle->insertIx(primaryData, pageID, slotID);
+		int page = recID >> ID_SEGM;
+		int offset = recID - (page << ID_SEGM);
+		sindexhandle->insertIx(primaryData, page, offset);
 		delete sindexhandle;
-		_ixm->CloseIndex(indexFileID);
+		this->indexmgr->CloseIndex(indexFileID);
 		delete[] primaryData;
 	}
-	for (int i = 0; i < _smm->_tables[tableID].attrNum; i++)
+	for (int i = 0; i < this->systemmgr->_tables[tableID].attrNum; i++)
 	{
 		if (attrsinfos[i].haveIndex)
 		{
 			BufType attrData = data + attrsinfos[i].offset;
 			int indexFileID;
-			_ixm->OpenIndex((tableName + "." + attrsinfos[i].attrName).c_str(), indexFileID);
+			this->indexmgr->OpenIndex((tableName + "." + attrsinfos[i].attrName).c_str(), indexFileID);
 			SIndexManager *sindexhandle = new SIndexManager(bufPageManager, indexFileID);
-			int pageID = recID >> ID_SEGM;
-			int slotID = recID - (pageID << ID_SEGM);
-			sindexhandle->insertIx(attrData, pageID, slotID);
+			int page = recID >> ID_SEGM;
+			int offset = recID - (page << ID_SEGM);
+			sindexhandle->insertIx(attrData, page, offset);
 			delete sindexhandle;
-			_ixm->CloseIndex(indexFileID);
+			this->indexmgr->CloseIndex(indexFileID);
 		}
 	}
-	delete[] data;
 	delete filehandle;
 	return 1;
 }
@@ -301,18 +404,18 @@ void DataOperater::Update(const Assigns assigns, vector<Relation *> relations)
 	assert(assigns.attrs.size() == assigns.assignnull.size());
 	string tableName = assigns.table;
 	//	有关于表的检查
-	int tableID = _smm->_fromNameToID(tableName);
+	int tableID = this->systemmgr->_fromNameToID(tableName);
 	if (tableID == -1)
 	{
-		fprintf(stderr, "Error: such table does not exist!\n");
+		printf("Error: such table does not exist!\n");
 		return;
 	}
-	for (int i = 0; i < _smm->_tableNum; i++)
+	for (int i = 0; i < this->systemmgr->_tableNum; i++)
 		if (i != tableID)
 		{
-			if (_smm->_tables[i].foreignSet.find(tableName) != _smm->_tables[i].foreignSet.end())
+			if (this->systemmgr->_tables[i].foreignSet.find(tableName) != this->systemmgr->_tables[i].foreignSet.end())
 			{
-				fprintf(stderr, "Error: foreign keys on the table!\n");
+				printf("Error: foreign keys on the table!\n");
 				return;
 			}
 		}
@@ -327,27 +430,27 @@ void DataOperater::Update(const Assigns assigns, vector<Relation *> relations)
 	for (int i = 0; i < assigns.attrs.size(); i++)
 	{
 		// 有关于主键外键等的各种检查
-		int attrID = _smm->_fromNameToID(assigns.attrs[i], tableID);
+		int attrID = this->systemmgr->_fromNameToID(assigns.attrs[i], tableID);
 		if (attrID == -1)
 		{
-			fprintf(stderr, "Error: such column does not exist!\n");
+			printf("Error: such column does not exist!\n");
 			return;
 		}
-		if (_smm->_tables[tableID].attrs[attrID].primary)
+		if (this->systemmgr->_tables[tableID].attrs[attrID].primary)
 		{
-			fprintf(stderr, "Error: cannot update primary keys!\n");
+			printf("Error: cannot update primary keys!\n");
 			return;
 		}
-		if (_smm->_tables[tableID].attrs[attrID].reference != "")
+		if (this->systemmgr->_tables[tableID].attrs[attrID].reference != "")
 		{
-			fprintf(stderr, "Error: cannot update foreign keys!\n");
+			printf("Error: cannot update foreign keys!\n");
 			return;
 		}
-		int attrLength = _smm->_tables[tableID].attrs[attrID].attrLength;
-		int attrType = _smm->_tables[tableID].attrs[attrID].attrType;
-		if (assigns.values[i]->data == nullptr && _smm->_tables[tableID].attrs[attrID].notNull)
+		int attrLength = this->systemmgr->_tables[tableID].attrs[attrID].attrLength;
+		int attrType = this->systemmgr->_tables[tableID].attrs[attrID].attrType;
+		if (assigns.values[i]->data == nullptr && this->systemmgr->_tables[tableID].attrs[attrID].notNull)
 		{
-			fprintf(stderr, "Error: set NOT-NULL columns to be null!\n");
+			printf("Error: set NOT-NULL columns to be null!\n");
 			return;
 		}
 		if (assigns.values[i]->data != nullptr)
@@ -409,14 +512,14 @@ void DataOperater::Update(const Assigns assigns, vector<Relation *> relations)
 		}
 
 		attrIDs.push_back(attrID);
-		offsets.push_back(_smm->_tables[tableID].attrs[attrID].offset);
+		offsets.push_back(this->systemmgr->_tables[tableID].attrs[attrID].offset);
 		attrLengths.push_back(attrLength);
 		attrTypes.push_back(attrType);
 		// 找一个索引
-		if (_smm->_tables[tableID].attrs[attrID].haveIndex)
+		if (this->systemmgr->_tables[tableID].attrs[attrID].haveIndex)
 		{
 			int indexFileID = -1;
-			_ixm->OpenIndex((tableName + "." + assigns.attrs[i]).c_str(), indexFileID);
+			this->indexmgr->OpenIndex((tableName + "." + assigns.attrs[i]).c_str(), indexFileID);
 			SIndexManager *sindexhandle = new SIndexManager(bufPageManager, indexFileID);
 			indexFileIDs.push_back(indexFileID);
 			sindexhandles.push_back(sindexhandle);
@@ -429,19 +532,19 @@ void DataOperater::Update(const Assigns assigns, vector<Relation *> relations)
 	}
 
 	//准备开始遍历
-	int recordSize = _smm->_tables[tableID].recordSize;
-	RecManager *filehandle = new RecManager(bufPageManager, _smm->_tableFileID[tableName], 0, false);
+	int recordSize = this->systemmgr->_tables[tableID].recordSize;
+	RecManager *filehandle = new RecManager(bufPageManager, this->systemmgr->_tableFileID[tableName], 0, false);
 	RecManager::Iterator *iter = new RecManager::Iterator(filehandle);
 
 	vector<int> attrID1, attrID2;
 	for (int i = 0; i < relations.size(); i++)
 	{
-		int attr = _smm->_fromNameToID(relations[i]->attr1, tableID);
+		int attr = this->systemmgr->_fromNameToID(relations[i]->attr1, tableID);
 		if (attr == -1)
 		{
 			delete iter;
 			delete filehandle;
-			fprintf(stderr, "Error: invalid columns!\n");
+			printf("Error: invalid columns!\n");
 			return;
 		}
 		attrID1.push_back(attr);
@@ -454,7 +557,7 @@ void DataOperater::Update(const Assigns assigns, vector<Relation *> relations)
 		{
 			attrID2.push_back(-1);
 			//类型检查与转换
-			if (_smm->_tables[tableID].attrs[attr].attrType == INT || _smm->_tables[tableID].attrs[attr].attrType == DATE)
+			if (this->systemmgr->_tables[tableID].attrs[attr].attrType == INT || this->systemmgr->_tables[tableID].attrs[attr].attrType == DATE)
 			{
 				if (relations[i]->value->datatype == INT || relations[i]->value->datatype == DATE)
 				{
@@ -472,7 +575,7 @@ void DataOperater::Update(const Assigns assigns, vector<Relation *> relations)
 					return;
 				}
 			}
-			else if (_smm->_tables[tableID].attrs[attr].attrType == FLOAT)
+			else if (this->systemmgr->_tables[tableID].attrs[attr].attrType == FLOAT)
 			{
 				if (relations[i]->value->datatype == INT || relations[i]->value->datatype == DATE)
 				{
@@ -490,7 +593,7 @@ void DataOperater::Update(const Assigns assigns, vector<Relation *> relations)
 					return;
 				}
 			}
-			else if (_smm->_tables[tableID].attrs[attr].attrType == STRING)
+			else if (this->systemmgr->_tables[tableID].attrs[attr].attrType == STRING)
 			{
 				if (relations[i]->value->datatype == STRING)
 				{
@@ -509,20 +612,20 @@ void DataOperater::Update(const Assigns assigns, vector<Relation *> relations)
 			}
 			continue;
 		}
-		attr = _smm->_fromNameToID(relations[i]->attr2, tableID);
+		attr = this->systemmgr->_fromNameToID(relations[i]->attr2, tableID);
 		if (attr == -1)
 		{
 			delete iter;
 			delete filehandle;
-			fprintf(stderr, "Error: invalid columns!\n");
+			printf("Error: invalid columns!\n");
 			return;
 		}
 		attrID2.push_back(attr);
-		if (_smm->_tables[tableID].attrs[attrID1[i]].attrType != _smm->_tables[tableID].attrs[attrID2[i]].attrType)
+		if (this->systemmgr->_tables[tableID].attrs[attrID1[i]].attrType != this->systemmgr->_tables[tableID].attrs[attrID2[i]].attrType)
 		{
 			delete iter;
 			delete filehandle;
-			fprintf(stderr, "Error: invalid comparison!\n");
+			printf("Error: invalid comparison!\n");
 			return;
 		}
 	}
@@ -533,14 +636,14 @@ void DataOperater::Update(const Assigns assigns, vector<Relation *> relations)
 	SIndexManager *indexscan = nullptr;
 	for (int i = 0; i < relations.size(); i++)
 	{
-		// printf("where列名:%s,是否有索引:%d\n",_smm->_tables[tableID].attrs[attrID1[i]].attrName.c_str(),_smm->_tables[tableID].attrs[attrID1[i]].haveIndex);
+		// printf("where列名:%s,是否有索引:%d\n",this->systemmgr->_tables[tableID].attrs[attrID1[i]].attrName.c_str(),this->systemmgr->_tables[tableID].attrs[attrID1[i]].haveIndex);
 		// 列与列相比较,不能用索引遍历
 		if (attrID2[i] != -1)
 			continue;
 		if (relations[i]->op == CompOp::IS_NULL || relations[i]->op == CompOp::IS_NOT_NULL || relations[i]->op == CompOp::NE_OP)
 			continue;
 		// if (relations[i]->op != EQ_OP) continue;
-		if (!_smm->_tables[tableID].attrs[attrID1[i]].haveIndex)
+		if (!this->systemmgr->_tables[tableID].attrs[attrID1[i]].haveIndex)
 			continue;
 		found = true;
 		bool lower = false;
@@ -571,23 +674,24 @@ void DataOperater::Update(const Assigns assigns, vector<Relation *> relations)
 
 		indexAttr = attrID1[i];
 		indexRel = i;
-		_ixm->OpenIndex((tableName + "." + _smm->_tables[tableID].attrs[indexAttr].attrName).c_str(), indexFileID);
+		this->indexmgr->OpenIndex((tableName + "." + this->systemmgr->_tables[tableID].attrs[indexAttr].attrName).c_str(), indexFileID);
 		indexscan = new SIndexManager(bufPageManager, indexFileID);
 		if (!indexscan->OpenScan(relations[i]->value->data, lower, scanself))
 		{
 			delete indexscan;
-			_ixm->CloseIndex(indexFileID);
+			this->indexmgr->CloseIndex(indexFileID);
 			delete iter;
 			delete filehandle;
-			fprintf(stderr, "Error! Failed to open index1");
+			printf("Error! Failed to open index1");
 			return;
 		}
 		break;
 	}
 
 	unsigned int recID;
-	int pageID, slotID;
+	int page, offset;
 	BufType data = new unsigned int[recordSize >> 2];
+	int outcnt = 0;
 	while (1)
 	{
 		bool hasNext;
@@ -598,14 +702,14 @@ void DataOperater::Update(const Assigns assigns, vector<Relation *> relations)
 
 			if (get_next)
 			{
-				hasNext = indexscan->GetNextEntry(pageID, slotID);
+				hasNext = indexscan->GetNextEntry(page, offset);
 			}
 			else
 			{
-				hasNext = indexscan->GetPrevEntry(pageID, slotID);
+				hasNext = indexscan->GetPrevEntry(page, offset);
 			}
-			recID = (pageID << 16) + slotID;
-			//printf("Scan,page:%d,slot:%d\n",pageID,slotID);
+			recID = (page << 16) + offset;
+			//printf("Scan,page:%d,slot:%d\n",page,offset);
 			filehandle->GetRec(data, recID);
 		}
 		else
@@ -613,20 +717,20 @@ void DataOperater::Update(const Assigns assigns, vector<Relation *> relations)
 			hasNext = iter->next(data, recID);
 			if (!hasNext)
 				break;
-			pageID = recID >> 16;
-			slotID = (recID << 16 >> 16);
-			// printf("page:%d,slot:%d\n",pageID,slotID);
+			page = recID >> 16;
+			offset = (recID << 16 >> 16);
+			// printf("page:%d,slot:%d\n",page,offset);
 		}
 		bool ok = true;
 		// 用于设置Null标记
 		unsigned long long *bitmap = (unsigned long long *)data;
 		for (int i = 0; i < relations.size(); i++)
 		{
-			BufType data1 = data + _smm->_tables[tableID].attrs[attrID1[i]].offset;
+			BufType data1 = data + this->systemmgr->_tables[tableID].attrs[attrID1[i]].offset;
 			BufType data2 = relations[i]->value->data;
 			if (data2 == nullptr)
 			{
-				data2 = data + _smm->_tables[tableID].attrs[attrID2[i]].offset;
+				data2 = data + this->systemmgr->_tables[tableID].attrs[attrID2[i]].offset;
 			}
 			if (relations[i]->op == IS_NULL)
 			{
@@ -660,17 +764,18 @@ void DataOperater::Update(const Assigns assigns, vector<Relation *> relations)
 				ok = false;
 				break;
 			}
-			ok = _compare(data1, data2, relations[i]->op, _smm->_tables[tableID].attrs[attrID1[i]].attrType);
+			ok = comparedata(data1, data2, relations[i]->op, this->systemmgr->_tables[tableID].attrs[attrID1[i]].attrType);
 			if (!ok)
 				break;
 		}
 		if (ok)
 		{
+			outcnt++;
 			for (int i = 0; i < attrIDs.size(); i++)
 			{
 				if (indexFileIDs[i] != -1)
 				{
-					sindexhandles[i]->deleteIx((void *)(data + offsets[i]), pageID, slotID);
+					sindexhandles[i]->deleteIx((void *)(data + offsets[i]), page, offset);
 				}
 				fill(data + offsets[i], data + offsets[i] + (attrLengths[i] >> 2), 0);
 				if (assigns.assignnull[i] == false && attrTypes[i] == STRING)
@@ -699,15 +804,16 @@ void DataOperater::Update(const Assigns assigns, vector<Relation *> relations)
 				}
 				if (indexFileIDs[i] != -1)
 				{
-					sindexhandles[i]->insertIx((void *)(data + offsets[i]), pageID, slotID);
+					sindexhandles[i]->insertIx((void *)(data + offsets[i]), page, offset);
 				}
 			}
-			// printf("before update -- pageID:%d,slotID:%d\n",pageID,slotID);
+			// printf("before update -- page:%d,offset:%d\n",page,offset);
 			filehandle->updateRec(data, recID);
 		}
 		if (!hasNext)
 			break;
 	}
+	printf("Query OK, %d rows affected\n", outcnt);
 	// TODO: delete data会引发内存异常,暂时找不到问题所在
 	// delete [] data;
 	for (int i = 0; i < attrIDs.size(); i++)
@@ -715,13 +821,13 @@ void DataOperater::Update(const Assigns assigns, vector<Relation *> relations)
 		if (indexFileIDs[i] != -1)
 		{
 			delete sindexhandles[i];
-			_ixm->CloseIndex(indexFileIDs[i]);
+			this->indexmgr->CloseIndex(indexFileIDs[i]);
 		}
 	}
 	if (found)
 	{
 		delete indexscan;
-		_ixm->CloseIndex(indexFileID);
+		this->indexmgr->CloseIndex(indexFileID);
 	}
 	delete iter;
 	delete filehandle;
@@ -729,33 +835,33 @@ void DataOperater::Update(const Assigns assigns, vector<Relation *> relations)
 
 void DataOperater::Delete(const string tableName, vector<Relation *> relations)
 {
-	int tableID = _smm->_fromNameToID(tableName);
+	int tableID = this->systemmgr->_fromNameToID(tableName);
 	if (tableID == -1)
 	{
-		fprintf(stderr, "Error: such table does not exist!\n");
+		printf("Error: such table does not exist!\n");
 		return;
 	}
-	for (int i = 0; i < _smm->_tableNum; i++)
+	for (int i = 0; i < this->systemmgr->_tableNum; i++)
 		if (i != tableID)
 		{
-			if (_smm->_tables[i].foreignSet.find(tableName) != _smm->_tables[i].foreignSet.end())
+			if (this->systemmgr->_tables[i].foreignSet.find(tableName) != this->systemmgr->_tables[i].foreignSet.end())
 			{
-				fprintf(stderr, "Error: foreign keys on the table!\n");
+				printf("Error: foreign keys on the table!\n");
 				return;
 			}
 		}
-	RecManager *filehandle = new RecManager(bufPageManager, _smm->_tableFileID[tableName], 0, false);
+	RecManager *filehandle = new RecManager(bufPageManager, this->systemmgr->_tableFileID[tableName], 0, false);
 	RecManager::Iterator *iter = new RecManager::Iterator(filehandle);
 
 	vector<int> attrID1, attrID2;
 	for (int i = 0; i < relations.size(); i++)
 	{
-		int attr = _smm->_fromNameToID(relations[i]->attr1, tableID);
+		int attr = this->systemmgr->_fromNameToID(relations[i]->attr1, tableID);
 		if (attr == -1)
 		{
 			delete iter;
 			delete filehandle;
-			fprintf(stderr, "Error: invalid columns!\n");
+			printf("Error: invalid columns!\n");
 			return;
 		}
 		attrID1.push_back(attr);
@@ -768,7 +874,7 @@ void DataOperater::Delete(const string tableName, vector<Relation *> relations)
 		{
 			attrID2.push_back(-1);
 			//类型检查与转换
-			if (_smm->_tables[tableID].attrs[attr].attrType == INT || _smm->_tables[tableID].attrs[attr].attrType == DATE)
+			if (this->systemmgr->_tables[tableID].attrs[attr].attrType == INT || this->systemmgr->_tables[tableID].attrs[attr].attrType == DATE)
 			{
 				if (relations[i]->value->datatype == INT || relations[i]->value->datatype == DATE)
 				{
@@ -786,7 +892,7 @@ void DataOperater::Delete(const string tableName, vector<Relation *> relations)
 					return;
 				}
 			}
-			else if (_smm->_tables[tableID].attrs[attr].attrType == FLOAT)
+			else if (this->systemmgr->_tables[tableID].attrs[attr].attrType == FLOAT)
 			{
 				if (relations[i]->value->datatype == INT || relations[i]->value->datatype == DATE)
 				{
@@ -804,7 +910,7 @@ void DataOperater::Delete(const string tableName, vector<Relation *> relations)
 					return;
 				}
 			}
-			else if (_smm->_tables[tableID].attrs[attr].attrType == STRING)
+			else if (this->systemmgr->_tables[tableID].attrs[attr].attrType == STRING)
 			{
 				if (relations[i]->value->datatype == STRING)
 				{
@@ -823,20 +929,20 @@ void DataOperater::Delete(const string tableName, vector<Relation *> relations)
 			}
 			continue;
 		}
-		attr = _smm->_fromNameToID(relations[i]->attr2, tableID);
+		attr = this->systemmgr->_fromNameToID(relations[i]->attr2, tableID);
 		if (attr == -1)
 		{
 			delete iter;
 			delete filehandle;
-			fprintf(stderr, "Error: invalid columns!\n");
+			printf("Error: invalid columns!\n");
 			return;
 		}
 		attrID2.push_back(attr);
-		if (_smm->_tables[tableID].attrs[attrID1[i]].attrType != _smm->_tables[tableID].attrs[attrID2[i]].attrType)
+		if (this->systemmgr->_tables[tableID].attrs[attrID1[i]].attrType != this->systemmgr->_tables[tableID].attrs[attrID2[i]].attrType)
 		{
 			delete iter;
 			delete filehandle;
-			fprintf(stderr, "Error: invalid comparison!\n");
+			printf("Error: invalid comparison!\n");
 			return;
 		}
 	}
@@ -844,21 +950,21 @@ void DataOperater::Delete(const string tableName, vector<Relation *> relations)
 	SIndexManager *primaryhandle;
 	vector<int> attrs, indexes;
 	vector<SIndexManager *> handles;
-	if (_smm->_tables[tableID].primary.size() != 0)
+	if (this->systemmgr->_tables[tableID].primary.size() != 0)
 	{
-		_ixm->OpenIndex((tableName + ".primary").c_str(), primaryIndex);
+		this->indexmgr->OpenIndex((tableName + ".primary").c_str(), primaryIndex);
 		primaryhandle = new SIndexManager(bufPageManager, primaryIndex);
 	}
-	for (int i = 0; i < _smm->_tables[tableID].attrNum; i++)
-		if (_smm->_tables[tableID].attrs[i].haveIndex)
+	for (int i = 0; i < this->systemmgr->_tables[tableID].attrNum; i++)
+		if (this->systemmgr->_tables[tableID].attrs[i].haveIndex)
 		{
 			attrs.push_back(i);
 			int indexFileID;
-			_ixm->OpenIndex((tableName + '.' + _smm->_tables[tableID].attrs[i].attrName).c_str(), indexFileID);
+			this->indexmgr->OpenIndex((tableName + '.' + this->systemmgr->_tables[tableID].attrs[i].attrName).c_str(), indexFileID);
 			indexes.push_back(indexFileID);
 			handles.push_back(new SIndexManager(bufPageManager, indexFileID));
 		}
-	int recordSize = _smm->_tables[tableID].recordSize;
+	int recordSize = this->systemmgr->_tables[tableID].recordSize;
 
 	BufType data = new unsigned int[recordSize >> 2];
 	unsigned int recID;
@@ -867,18 +973,18 @@ void DataOperater::Delete(const string tableName, vector<Relation *> relations)
 		bool hasNext = iter->next(data, recID);
 		if (!hasNext)
 			break;
-		int pageID = recID >> 16;
-		int slotID = (recID << 16 >> 16);
+		int page = recID >> 16;
+		int offset = (recID << 16 >> 16);
 
 		bool ok = true;
 		unsigned long long *bitmap = (unsigned long long *)data;
 		for (int i = 0; i < relations.size(); i++)
 		{
-			BufType data1 = data + _smm->_tables[tableID].attrs[attrID1[i]].offset;
+			BufType data1 = data + this->systemmgr->_tables[tableID].attrs[attrID1[i]].offset;
 			BufType data2 = relations[i]->value->data;
 			if (data2 == nullptr)
 			{
-				data2 = data + _smm->_tables[tableID].attrs[attrID2[i]].offset;
+				data2 = data + this->systemmgr->_tables[tableID].attrs[attrID2[i]].offset;
 			}
 			if (relations[i]->op == IS_NULL)
 			{
@@ -912,7 +1018,7 @@ void DataOperater::Delete(const string tableName, vector<Relation *> relations)
 				ok = false;
 				break;
 			}
-			ok = _compare(data1, data2, relations[i]->op, _smm->_tables[tableID].attrs[attrID1[i]].attrType);
+			ok = comparedata(data1, data2, relations[i]->op, this->systemmgr->_tables[tableID].attrs[attrID1[i]].attrType);
 			if (!ok)
 				break;
 		}
@@ -920,29 +1026,29 @@ void DataOperater::Delete(const string tableName, vector<Relation *> relations)
 		{
 			if (primaryIndex != -1)
 			{
-				BufType primaryData = _smm->_getPrimaryKey(tableID, data);
-				primaryhandle->deleteIx(primaryData, pageID, slotID);
+				BufType primaryData = this->systemmgr->_getPrimaryKey(tableID, data);
+				primaryhandle->deleteIx(primaryData, page, offset);
 				delete primaryData;
 			}
 			for (int i = 0; i < handles.size(); i++)
 			{
-				BufType attrData = data + _smm->_tables[tableID].attrs[attrs[i]].offset;
-				handles[i]->deleteIx(attrData, pageID, slotID);
+				BufType attrData = data + this->systemmgr->_tables[tableID].attrs[attrs[i]].offset;
+				handles[i]->deleteIx(attrData, page, offset);
 			}
 			filehandle->deleteRec(recID);
-			// if (!filehandle->DeleteRec(pageID, slotID)) cout << "failed" << endl;
+			// if (!filehandle->DeleteRec(page, offset)) cout << "failed" << endl;
 		}
 	}
 	// TODO: delete data会引发内存异常,暂时找不到问题所在
 	// delete data;
 	if (primaryIndex != -1)
 	{
-		_ixm->CloseIndex(primaryIndex);
+		this->indexmgr->CloseIndex(primaryIndex);
 		delete primaryhandle;
 	}
 	for (int i = 0; i < handles.size(); i++)
 	{
-		_ixm->CloseIndex(indexes[i]);
+		this->indexmgr->CloseIndex(indexes[i]);
 		delete handles[i];
 	}
 	delete iter;
@@ -951,10 +1057,10 @@ void DataOperater::Delete(const string tableName, vector<Relation *> relations)
 
 void DataOperater::Select(const string tableName, vector<Relation *> relations, vector<string> attrNames)
 {
-	int tableID = _smm->_fromNameToID(tableName);
+	int tableID = this->systemmgr->_fromNameToID(tableName);
 	if (tableID == -1)
 	{
-		fprintf(stderr, "Error: such table does not exist!\n");
+		printf("Error: such table does not exist!\n");
 		return;
 	}
 	// printf("select from table:%s\n",tableName.c_str());
@@ -966,37 +1072,37 @@ void DataOperater::Select(const string tableName, vector<Relation *> relations, 
 		{
 			//printf("所有列\n");
 			attrIDs.clear();
-			for (int attrID = 0; attrID < _smm->_tables[tableID].attrNum; attrID++)
+			for (int attrID = 0; attrID < this->systemmgr->_tables[tableID].attrNum; attrID++)
 				attrIDs.push_back(attrID);
 			attrNames.clear();
-			for (int attrID = 0; attrID < _smm->_tables[tableID].attrNum; attrID++)
+			for (int attrID = 0; attrID < this->systemmgr->_tables[tableID].attrNum; attrID++)
 			{
-				string attrname = _smm->_tables[tableID].attrs[attrID].attrName;
+				string attrname = this->systemmgr->_tables[tableID].attrs[attrID].attrName;
 				attrNames.push_back(attrname);
 			}
 			break;
 		}
-		int attrID = _smm->_fromNameToID(attrNames[i], tableID);
+		int attrID = this->systemmgr->_fromNameToID(attrNames[i], tableID);
 		if (attrID == -1)
 		{
-			fprintf(stderr, "Error: invalid columns!\n");
+			printf("Error: invalid columns!\n");
 			return;
 		}
 		attrIDs.push_back(attrID);
 	}
-	RecManager *filehandle = new RecManager(bufPageManager, _smm->_tableFileID[tableName], 0, false);
+	RecManager *filehandle = new RecManager(bufPageManager, this->systemmgr->_tableFileID[tableName], 0, false);
 	RecManager::Iterator *iter = new RecManager::Iterator(filehandle);
 
 	vector<int> attrID1, attrID2;
 	for (int i = 0; i < relations.size(); i++)
 	{
 		//列名:%s\n",relations[i]->attr1.c_str());
-		int attr = _smm->_fromNameToID(relations[i]->attr1, tableID);
+		int attr = this->systemmgr->_fromNameToID(relations[i]->attr1, tableID);
 		if (attr == -1)
 		{
 			delete iter;
 			delete filehandle;
-			fprintf(stderr, "Error: invalid columns!\n");
+			printf("Error: invalid columns!\n");
 			return;
 		}
 		attrID1.push_back(attr);
@@ -1009,7 +1115,7 @@ void DataOperater::Select(const string tableName, vector<Relation *> relations, 
 		{
 			attrID2.push_back(-1);
 			//类型检查与转换
-			if (_smm->_tables[tableID].attrs[attr].attrType == INT || _smm->_tables[tableID].attrs[attr].attrType == DATE)
+			if (this->systemmgr->_tables[tableID].attrs[attr].attrType == INT || this->systemmgr->_tables[tableID].attrs[attr].attrType == DATE)
 			{
 				if (relations[i]->value->datatype == INT || relations[i]->value->datatype == DATE)
 				{
@@ -1027,7 +1133,7 @@ void DataOperater::Select(const string tableName, vector<Relation *> relations, 
 					return;
 				}
 			}
-			else if (_smm->_tables[tableID].attrs[attr].attrType == FLOAT)
+			else if (this->systemmgr->_tables[tableID].attrs[attr].attrType == FLOAT)
 			{
 				if (relations[i]->value->datatype == INT || relations[i]->value->datatype == DATE)
 				{
@@ -1045,7 +1151,7 @@ void DataOperater::Select(const string tableName, vector<Relation *> relations, 
 					return;
 				}
 			}
-			else if (_smm->_tables[tableID].attrs[attr].attrType == STRING)
+			else if (this->systemmgr->_tables[tableID].attrs[attr].attrType == STRING)
 			{
 				if (relations[i]->value->datatype == STRING)
 				{
@@ -1064,20 +1170,20 @@ void DataOperater::Select(const string tableName, vector<Relation *> relations, 
 			}
 			continue;
 		}
-		attr = _smm->_fromNameToID(relations[i]->attr2, tableID);
+		attr = this->systemmgr->_fromNameToID(relations[i]->attr2, tableID);
 		if (attr == -1)
 		{
 			delete iter;
 			delete filehandle;
-			fprintf(stderr, "Error: invalid columns!\n");
+			printf("Error: invalid columns!\n");
 			return;
 		}
 		attrID2.push_back(attr);
-		if (_smm->_tables[tableID].attrs[attrID1[i]].attrType != _smm->_tables[tableID].attrs[attrID2[i]].attrType)
+		if (this->systemmgr->_tables[tableID].attrs[attrID1[i]].attrType != this->systemmgr->_tables[tableID].attrs[attrID2[i]].attrType)
 		{
 			delete iter;
 			delete filehandle;
-			fprintf(stderr, "Error: invalid comparison!\n");
+			printf("Error: invalid comparison!\n");
 			return;
 		}
 	}
@@ -1093,10 +1199,10 @@ void DataOperater::Select(const string tableName, vector<Relation *> relations, 
 		//if (relations[i]->op != EQ_OP) continue;
 		if (relations[i]->op == CompOp::IS_NULL || relations[i]->op == CompOp::IS_NOT_NULL || relations[i]->op == CompOp::NE_OP)
 			continue;
-		if (!_smm->_tables[tableID].attrs[attrID1[i]].haveIndex)
+		if (!this->systemmgr->_tables[tableID].attrs[attrID1[i]].haveIndex)
 			continue;
 		found = true;
-		printf("Scan with index: %s\n", _smm->_tables[tableID].attrs[attrID1[i]].attrName.c_str());
+		printf("Scan with index: %s\n", this->systemmgr->_tables[tableID].attrs[attrID1[i]].attrName.c_str());
 		bool lower = false;
 		bool scanself = false;
 		if (relations[i]->op == CompOp::LE_OP || relations[i]->op == CompOp::LT_OP)
@@ -1124,23 +1230,23 @@ void DataOperater::Select(const string tableName, vector<Relation *> relations, 
 		}
 		indexAttr = attrID1[i];
 		indexRel = i;
-		_ixm->OpenIndex((tableName + "." + _smm->_tables[tableID].attrs[indexAttr].attrName).c_str(), indexFileID);
+		this->indexmgr->OpenIndex((tableName + "." + this->systemmgr->_tables[tableID].attrs[indexAttr].attrName).c_str(), indexFileID);
 		indexscan = new SIndexManager(bufPageManager, indexFileID);
 		if (!indexscan->OpenScan(relations[i]->value->data, lower, scanself))
 		{
 			delete indexscan;
-			_ixm->CloseIndex(indexFileID);
+			this->indexmgr->CloseIndex(indexFileID);
 			delete iter;
 			delete filehandle;
 			return;
 		}
 		break;
 	}
-	int recordSize = _smm->_tables[tableID].recordSize;
+	int recordSize = this->systemmgr->_tables[tableID].recordSize;
 	int outcnt = 0;
 
 	unsigned int recID;
-	int pageID, slotID;
+	int page, offset;
 
 	BufType data = new unsigned int[recordSize >> 2];
 	while (1)
@@ -1151,13 +1257,13 @@ void DataOperater::Select(const string tableName, vector<Relation *> relations, 
 		{
 			if (get_next)
 			{
-				hasNext = indexscan->GetNextEntry(pageID, slotID);
+				hasNext = indexscan->GetNextEntry(page, offset);
 			}
 			else
 			{
-				hasNext = indexscan->GetPrevEntry(pageID, slotID);
+				hasNext = indexscan->GetPrevEntry(page, offset);
 			}
-			recID = (pageID << 16) + slotID;
+			recID = (page << 16) + offset;
 			filehandle->GetRec(data, recID);
 		}
 		else
@@ -1165,19 +1271,19 @@ void DataOperater::Select(const string tableName, vector<Relation *> relations, 
 			hasNext = iter->next(data, recID);
 			if (!hasNext)
 				break;
-			pageID = recID >> 16;
-			slotID = (recID << 16 >> 16);
-			// printf("page:%d,slot:%d\n",pageID,slotID);
+			page = recID >> 16;
+			offset = (recID << 16 >> 16);
+			// printf("page:%d,slot:%d\n",page,offset);
 		}
 		bool ok = true;
 		unsigned long long *bitmap = (unsigned long long *)data;
 		for (int i = 0; i < relations.size(); i++)
 		{
-			BufType data1 = data + _smm->_tables[tableID].attrs[attrID1[i]].offset;
+			BufType data1 = data + this->systemmgr->_tables[tableID].attrs[attrID1[i]].offset;
 			BufType data2 = relations[i]->value->data;
 			if (data2 == nullptr)
 			{
-				data2 = data + _smm->_tables[tableID].attrs[attrID2[i]].offset;
+				data2 = data + this->systemmgr->_tables[tableID].attrs[attrID2[i]].offset;
 			}
 			if (relations[i]->op == IS_NULL)
 			{
@@ -1211,7 +1317,7 @@ void DataOperater::Select(const string tableName, vector<Relation *> relations, 
 				ok = false;
 				break;
 			}
-			ok = _compare(data1, data2, relations[i]->op, _smm->_tables[tableID].attrs[attrID1[i]].attrType);
+			ok = comparedata(data1, data2, relations[i]->op, this->systemmgr->_tables[tableID].attrs[attrID1[i]].attrType);
 			if (i == indexRel && !ok)
 				hasNext = false;
 			if (!ok)
@@ -1220,27 +1326,27 @@ void DataOperater::Select(const string tableName, vector<Relation *> relations, 
 		if (ok)
 		{
 			outcnt++;
-			if (outcnt <= 100)
+			if (outcnt <= 500)
 			{
 				putchar('|');
 				for (int i = 0; i < attrIDs.size(); i++)
 				{
 					printf(" %s ", attrNames[i].c_str());
-					BufType out = data + _smm->_tables[tableID].attrs[attrIDs[i]].offset;
+					BufType out = data + this->systemmgr->_tables[tableID].attrs[attrIDs[i]].offset;
 					if ((bitmap[0] & (1ull << attrIDs[i])) == 0)
 					{
 						printf(" NULL |");
 						continue;
 					}
-					if (_smm->_tables[tableID].attrs[attrIDs[i]].attrType == INT)
+					if (this->systemmgr->_tables[tableID].attrs[attrIDs[i]].attrType == INT)
 					{
 						printf(" %d ", *(int *)out);
 					}
-					else if (_smm->_tables[tableID].attrs[attrIDs[i]].attrType == FLOAT)
+					else if (this->systemmgr->_tables[tableID].attrs[attrIDs[i]].attrType == FLOAT)
 					{
 						printf(" %.6lf ", *(double *)out);
 					}
-					else if (_smm->_tables[tableID].attrs[attrIDs[i]].attrType == STRING)
+					else if (this->systemmgr->_tables[tableID].attrs[attrIDs[i]].attrType == STRING)
 					{
 						printf(" %s ", (char *)out);
 					}
@@ -1254,18 +1360,19 @@ void DataOperater::Select(const string tableName, vector<Relation *> relations, 
 	}
 	// TODO: delete data会引发内存异常,暂时找不到问题所在
 	// delete data;
-	if (outcnt > 100)
+	if (outcnt > 500)
 	{
 		puts("...");
-		printf("Altogether %d records.\n", outcnt);
 	}
-	if (outcnt == 0){
+	printf("共有 %d 条查询结果.\n", outcnt);
+	if (outcnt == 0)
+	{
 		printf("No results.\n");
 	}
 	if (found)
 	{
 		delete indexscan;
-		_ixm->CloseIndex(indexFileID);
+		this->indexmgr->CloseIndex(indexFileID);
 	}
 	delete iter;
 	delete filehandle;
@@ -1283,23 +1390,35 @@ bool invector(vector<T> vec, T st)
 	return false;
 }
 
+//判断一个元素是否在set中
+template <class T>
+bool inset(set<T> _set, T st)
+{
+	for (T t : _set)
+	{
+		if (st == t)
+			return true;
+	}
+	return false;
+}
+
 void DataOperater::Select(vector<string> tableNames, vector<Tcol *> cols, vector<Relation *> relations)
 {
 	//多表连接函数
 	vector<int> tableIDs;
 	for (int i = 0; i < tableNames.size(); i++)
 	{
-		int tableID = _smm->_fromNameToID(tableNames[i]);
+		int tableID = this->systemmgr->_fromNameToID(tableNames[i]);
 		if (tableID == -1)
 		{
-			fprintf(stderr, "Error: no such table in tablelist!\n");
+			printf("Error: no such table in tablelist!\n");
 			return;
 		}
 		for (int j = 0; j < tableIDs.size(); j++)
 		{
 			if (tableIDs[j] == tableID)
 			{
-				fprintf(stderr, "Error: cannot connect same tables!\n");
+				printf("Error: cannot connect same tables!\n");
 				return;
 			}
 		}
@@ -1314,10 +1433,12 @@ void DataOperater::Select(vector<string> tableNames, vector<Tcol *> cols, vector
 			//printf("所有列\n");
 			attrIDs.clear();
 			cols.clear();
-			for(int i = 0;i < tableNames.size();i++) {
-				for(int attrID = 0;attrID < _smm->_tables[tableIDs[i]].attrNum;attrID++){
+			for (int i = 0; i < tableNames.size(); i++)
+			{
+				for (int attrID = 0; attrID < this->systemmgr->_tables[tableIDs[i]].attrNum; attrID++)
+				{
 					attrIDs.push_back(make_pair(tableIDs[i], attrID));
-					Tcol* tcol = new Tcol(tableNames[i],_smm->_tables[tableIDs[i]].attrs[attrID].attrName);
+					Tcol *tcol = new Tcol(tableNames[i], this->systemmgr->_tables[tableIDs[i]].attrs[attrID].attrName);
 					cols.push_back(tcol);
 				}
 			}
@@ -1331,13 +1452,13 @@ void DataOperater::Select(vector<string> tableNames, vector<Tcol *> cols, vector
 		{
 			if (table == tableNames[i])
 			{
-				attrID = _smm->_fromNameToID(attr, tableIDs[i]);
+				attrID = this->systemmgr->_fromNameToID(attr, tableIDs[i]);
 				attrIDs.push_back(make_pair(tableIDs[i], attrID));
 			}
 		}
 		if (attrID == -1)
 		{
-			fprintf(stderr, "Error: invalid columns!\n");
+			printf("Error: invalid columns!\n");
 			return;
 		}
 	}
@@ -1349,22 +1470,22 @@ void DataOperater::Select(vector<string> tableNames, vector<Tcol *> cols, vector
 	vector<pair<int, int>> attrID1, attrID2;
 	for (int i = 0; i < relations.size(); i++)
 	{
-		int tableID = _smm->_fromNameToID(relations[i]->table1);
+		int tableID = this->systemmgr->_fromNameToID(relations[i]->table1);
 		if (tableID == -1)
 		{
-			fprintf(stderr, "Error: In whereClauses, invalid tables!\n");
+			printf("Error: In whereClauses, invalid tables!\n");
 			return;
 		}
 		if (!invector(tableIDs, tableID))
 		{
-			fprintf(stderr, "Error: In whereClauses, no such table in tablelist!\n");
+			printf("Error: In whereClauses, no such table in tablelist!\n");
 			return;
 		}
 
-		int attr = _smm->_fromNameToID(relations[i]->attr1, tableID);
+		int attr = this->systemmgr->_fromNameToID(relations[i]->attr1, tableID);
 		if (attr == -1)
 		{
-			fprintf(stderr, "Error: In whereClauses, invalid columns!\n");
+			printf("Error: In whereClauses, invalid columns!\n");
 			return;
 		}
 		attrID1.push_back(make_pair(tableID, attr));
@@ -1377,7 +1498,7 @@ void DataOperater::Select(vector<string> tableNames, vector<Tcol *> cols, vector
 		{
 			attrID2.push_back(make_pair(-1, -1));
 			//类型检查与转换
-			if (_smm->_tables[tableID].attrs[attr].attrType == INT || _smm->_tables[tableID].attrs[attr].attrType == DATE)
+			if (this->systemmgr->_tables[tableID].attrs[attr].attrType == INT || this->systemmgr->_tables[tableID].attrs[attr].attrType == DATE)
 			{
 				if (relations[i]->value->datatype == INT || relations[i]->value->datatype == DATE)
 				{
@@ -1395,7 +1516,7 @@ void DataOperater::Select(vector<string> tableNames, vector<Tcol *> cols, vector
 					return;
 				}
 			}
-			else if (_smm->_tables[tableID].attrs[attr].attrType == FLOAT)
+			else if (this->systemmgr->_tables[tableID].attrs[attr].attrType == FLOAT)
 			{
 				if (relations[i]->value->datatype == INT || relations[i]->value->datatype == DATE)
 				{
@@ -1413,7 +1534,7 @@ void DataOperater::Select(vector<string> tableNames, vector<Tcol *> cols, vector
 					return;
 				}
 			}
-			else if (_smm->_tables[tableID].attrs[attr].attrType == STRING)
+			else if (this->systemmgr->_tables[tableID].attrs[attr].attrType == STRING)
 			{
 				if (relations[i]->value->datatype == STRING)
 				{
@@ -1433,28 +1554,28 @@ void DataOperater::Select(vector<string> tableNames, vector<Tcol *> cols, vector
 			continue;
 		}
 
-		tableID = _smm->_fromNameToID(relations[i]->table2);
+		tableID = this->systemmgr->_fromNameToID(relations[i]->table2);
 		if (tableID == -1)
 		{
-			fprintf(stderr, "Error: In whereClauses, invalid tables!\n");
+			printf("Error: In whereClauses, invalid tables!\n");
 			return;
 		}
 		if (!invector(tableIDs, tableID))
 		{
-			fprintf(stderr, "Error: In whereClauses, no such table in tablelist!\n");
+			printf("Error: In whereClauses, no such table in tablelist!\n");
 			return;
 		}
-		attr = _smm->_fromNameToID(relations[i]->attr2, tableID);
+		attr = this->systemmgr->_fromNameToID(relations[i]->attr2, tableID);
 		if (attr == -1)
 		{
-			fprintf(stderr, "Error: In whereClauses, invalid columns!\n");
+			printf("Error: In whereClauses, invalid columns!\n");
 			return;
 		}
 		attrID2.push_back(make_pair(tableID, attr));
 		// 检查两个列类型是否相同
-		if (_smm->_tables[attrID1[i].first].attrs[attrID1[i].second].attrType != _smm->_tables[attrID2[i].first].attrs[attrID2[i].second].attrType)
+		if (this->systemmgr->_tables[attrID1[i].first].attrs[attrID1[i].second].attrType != this->systemmgr->_tables[attrID2[i].first].attrs[attrID2[i].second].attrType)
 		{
-			fprintf(stderr, "Error: In whereClauses, invalid comparison!\n");
+			printf("Error: In whereClauses, invalid comparison!\n");
 			return;
 		}
 	}
@@ -1464,9 +1585,9 @@ void DataOperater::Select(vector<string> tableNames, vector<Tcol *> cols, vector
 	vector<int> recordSizes;
 	for (int i = 0; i < tableNames.size(); i++)
 	{
-		RecManager *filehandle = new RecManager(bufPageManager, _smm->_tableFileID[tableNames[i]], 0, false);
+		RecManager *filehandle = new RecManager(bufPageManager, this->systemmgr->_tableFileID[tableNames[i]], 0, false);
 		RecManager::Iterator *iter = new RecManager::Iterator(filehandle);
-		int recordSize = _smm->_tables[tableIDs[i]].recordSize;
+		int recordSize = this->systemmgr->_tables[tableIDs[i]].recordSize;
 		filehandles.push_back(filehandle);
 		iters.push_back(iter);
 		recordSizes.push_back(recordSize);
@@ -1492,8 +1613,9 @@ void DataOperater::Select(vector<string> tableNames, vector<Tcol *> cols, vector
 			// 进行单项筛选
 			for (int i = 0; i < relations.size(); i++)
 			{
-				if(attrID1[i].first != tableIDs[i])	continue;
-				BufType data1 = data + _smm->_tables[attrID1[i].first].attrs[attrID1[i].second].offset;
+				if (attrID1[i].first != tableIDs[i])
+					continue;
+				BufType data1 = data + this->systemmgr->_tables[attrID1[i].first].attrs[attrID1[i].second].offset;
 
 				if (relations[i]->op == IS_NULL)
 				{
@@ -1526,15 +1648,16 @@ void DataOperater::Select(vector<string> tableNames, vector<Tcol *> cols, vector
 					ok = false;
 					break;
 				}
-				ok = _compare(data1, data2, relations[i]->op, _smm->_tables[tableIDs[i]].attrs[attrID1[i].second].attrType);
+				ok = comparedata(data1, data2, relations[i]->op, this->systemmgr->_tables[tableIDs[i]].attrs[attrID1[i].second].attrType);
 				if (!ok)
 					break;
 			}
-			if(ok)	tabledatas.push_back(data);
-
+			if (ok)
+				tabledatas.push_back(data);
 		}
 		datas.push_back(tabledatas);
-		if(tabledatas.size() == 0){
+		if (tabledatas.size() == 0)
+		{
 			printf("No result.\n");
 			return;
 		}
@@ -1542,15 +1665,18 @@ void DataOperater::Select(vector<string> tableNames, vector<Tcol *> cols, vector
 	}
 
 	vector<int> scanid;
-	for(int i = 0; i < tableNames.size(); i++) {
+	for (int i = 0; i < tableNames.size(); i++)
+	{
 		scanid.push_back(0);
 	}
 
 	//printf("多表连接2\n");
 	int outcnt = 0;
-	while(1) {
+	while (1)
+	{
 		vector<BufType> scandatas;
-		for(int i = 0;i < tableNames.size();i++){
+		for (int i = 0; i < tableNames.size(); i++)
+		{
 			scandatas.push_back(datas[i][scanid[i]]);
 		}
 
@@ -1560,8 +1686,10 @@ void DataOperater::Select(vector<string> tableNames, vector<Tcol *> cols, vector
 		{
 			//获取attr1的表在tableID里的位置
 			int tableidx1 = -1;
-			for(int j = 0;j < tableNames.size();j++){
-				if(attrID1[i].first == tableIDs[j]){
+			for (int j = 0; j < tableNames.size(); j++)
+			{
+				if (attrID1[i].first == tableIDs[j])
+				{
 					tableidx1 = j;
 					break;
 				}
@@ -1569,27 +1697,31 @@ void DataOperater::Select(vector<string> tableNames, vector<Tcol *> cols, vector
 			assert(tableidx1 >= 0);
 			// printf("attr1:%d,%d,tableidx:%d\n",attrID1[i].first,attrID1[i].second,tableidx1);
 			//NULL检查和单项属性检查在之前已完成,这里只检查联合判定
-			BufType data1 = scandatas[tableidx1] + _smm->_tables[attrID1[i].first].attrs[attrID1[i].second].offset;
+			BufType data1 = scandatas[tableidx1] + this->systemmgr->_tables[attrID1[i].first].attrs[attrID1[i].second].offset;
 
 			//获取attr2的表在tableID里的位置
-			if(attrID2[i].first == -1 || attrID2[i].second == -1) continue;
+			if (attrID2[i].first == -1 || attrID2[i].second == -1)
+				continue;
 			int tableidx2 = -1;
-			for(int j = 0;j < tableNames.size();j++){
-				if(attrID2[i].first == tableIDs[j]){
+			for (int j = 0; j < tableNames.size(); j++)
+			{
+				if (attrID2[i].first == tableIDs[j])
+				{
 					tableidx2 = j;
 					break;
 				}
 			}
 			assert(tableidx2 >= 0);
-			BufType data2 = scandatas[tableidx2] + _smm->_tables[attrID2[i].first].attrs[attrID2[i].second].offset;
-			ok = _compare(data1, data2, relations[i]->op, _smm->_tables[attrID1[i].first].attrs[attrID1[i].second].attrType);
-			if(!ok) break;
+			BufType data2 = scandatas[tableidx2] + this->systemmgr->_tables[attrID2[i].first].attrs[attrID2[i].second].offset;
+			ok = comparedata(data1, data2, relations[i]->op, this->systemmgr->_tables[attrID1[i].first].attrs[attrID1[i].second].attrType);
+			if (!ok)
+				break;
 		}
 		//printf("多表连接4\n");
 		if (ok)
 		{
 			outcnt++;
-			if (outcnt <= 100)
+			if (outcnt <= 500)
 			{
 				putchar('|');
 				for (int i = 0; i < attrIDs.size(); i++)
@@ -1598,16 +1730,18 @@ void DataOperater::Select(vector<string> tableNames, vector<Tcol *> cols, vector
 					int attrid = attrIDs[i].second;
 					//获取attr1的表在tableID里的位置
 					int tableidx1 = -1;
-					for(int j = 0;j < tableNames.size();j++){
-						if(tableid == tableIDs[j]){
+					for (int j = 0; j < tableNames.size(); j++)
+					{
+						if (tableid == tableIDs[j])
+						{
 							tableidx1 = j;
 							break;
 						}
 					}
 					assert(tableidx1 >= 0);
 					//printf("attr1:%d,%d,tableidx:%d\n",tableid,attrid,tableidx1);
-					BufType out = scandatas[tableidx1] + _smm->_tables[tableid].attrs[attrid].offset;
-					printf(" %s.%s ", cols[i]->tablename.c_str(),cols[i]->colname.c_str());
+					BufType out = scandatas[tableidx1] + this->systemmgr->_tables[tableid].attrs[attrid].offset;
+					printf(" %s.%s ", cols[i]->tablename.c_str(), cols[i]->colname.c_str());
 
 					unsigned long long *bitmap = (unsigned long long *)scandatas[tableidx1];
 					if ((bitmap[0] & (1ull << attrid)) == 0)
@@ -1615,15 +1749,15 @@ void DataOperater::Select(vector<string> tableNames, vector<Tcol *> cols, vector
 						printf(" NULL |");
 						continue;
 					}
-					if (_smm->_tables[tableid].attrs[attrid].attrType == INT)
+					if (this->systemmgr->_tables[tableid].attrs[attrid].attrType == INT)
 					{
 						printf(" %d ", *(int *)out);
 					}
-					else if (_smm->_tables[tableid].attrs[attrid].attrType == FLOAT)
+					else if (this->systemmgr->_tables[tableid].attrs[attrid].attrType == FLOAT)
 					{
 						printf(" %.6lf ", *(double *)out);
 					}
-					else if (_smm->_tables[tableid].attrs[attrid].attrType == STRING)
+					else if (this->systemmgr->_tables[tableid].attrs[attrid].attrType == STRING)
 					{
 						printf(" %s ", (char *)out);
 					}
@@ -1635,139 +1769,98 @@ void DataOperater::Select(vector<string> tableNames, vector<Tcol *> cols, vector
 
 		bool jw = true;
 		int idx = scanid.size() - 1;
-		while(idx >= 0) {
+		while (idx >= 0)
+		{
 			// printf("scanid:第%d个--%d\n",idx,scanid[idx]);
-			if(jw){
+			if (jw)
+			{
 				scanid[idx] = scanid[idx] + 1;
-				if(scanid[idx] >= datas[idx].size() && idx != 0){
+				if (scanid[idx] >= datas[idx].size() && idx != 0)
+				{
 					scanid[idx] = 0;
 					jw = true;
-				}else{
+				}
+				else
+				{
 					jw = false;
 				}
-			}else{
+			}
+			else
+			{
 				jw = false;
 			}
 			idx--;
 		}
-		if(scanid[0] >= datas[0].size())	break;
+		if (scanid[0] >= datas[0].size())
+			break;
 	}
-	if (outcnt > 100)
+	if (outcnt > 500)
 	{
-	 	puts("...");
-		printf("Altogether %d records.\n", outcnt);
+		puts("...");
 	}
-	// delete iter1;
-	// delete filehandle1;
-	// delete iter2;
-	// delete filehandle2;
+	printf("共有 %d 条查询结果.\n", outcnt);
 }
 
-	bool DataOperater::_compare(BufType data1, BufType data2, CompOp op, int type)
-	{
-		if (type == STRING)
-		{
-			int result = strcmp((char *)data1, (char *)data2);
-			if (op == EQ_OP)
-				return result == 0;
-			if (op == NE_OP)
-				return result != 0;
-			if (op == LT_OP)
-				return result < 0;
-			if (op == GT_OP)
-				return result > 0;
-			if (op == LE_OP)
-				return result <= 0;
-			if (op == GE_OP)
-				return result >= 0;
-		}
-		else if (type == INT)
-		{
-			if (op == EQ_OP)
-				return *(int *)data1 == *(int *)data2;
-			if (op == NE_OP)
-				return *(int *)data1 != *(int *)data2;
-			if (op == LT_OP)
-				return *(int *)data1 < *(int *)data2;
-			if (op == GT_OP)
-				return *(int *)data1 > *(int *)data2;
-			if (op == LE_OP)
-				return *(int *)data1 <= *(int *)data2;
-			if (op == GE_OP)
-				return *(int *)data1 >= *(int *)data2;
-		}
-		else if (type == FLOAT)
-		{
-			if (op == EQ_OP)
-				return *(double *)data1 == *(double *)data2;
-			if (op == NE_OP)
-				return *(double *)data1 != *(double *)data2;
-			if (op == LT_OP)
-				return *(double *)data1 < *(double *)data2;
-			if (op == GT_OP)
-				return *(double *)data1 > *(double *)data2;
-			if (op == LE_OP)
-				return *(double *)data1 <= *(double *)data2;
-			if (op == GE_OP)
-				return *(double *)data1 >= *(double *)data2;
-		}
-		printf("Error Operator in compare\n");
-		assert(0);
-		return false;
-	}
+void DataOperater::Load(const string tableName, const char *line)
+{
+	int tableID = this->systemmgr->_fromNameToID(tableName);
+	vector<AttrInfo> attrsinfos = this->systemmgr->_tables[tableID].attrs;
+	vector<Value *> rdata;
+	vector<int> cols;
+	int nullnub = 0;
 
-	void DataOperater::Load(const string tableName, const char *line)
+	char *tmp = strdup(line);
+	char *tok;
+	/* 获取第一个子字符串 */
+	tok = strtok(tmp, "|");
+	vector<char *> tmps;
+	int i = 0;
+	while (tok != NULL)
 	{
-		int tableID = _smm->_fromNameToID(tableName);
-		vector<AttrInfo> attrsinfos = _smm->_tables[tableID].attrs;
-		vector<Value *> rdata;
-		vector<int> cols;
-		int nullnub = 0;
-
-		char *tmp = strdup(line);
-		char *tok;
-		/* 获取第一个子字符串 */
-		tok = strtok(tmp, "|");
-		vector<char *> tmps;
-		int i = 0;
-		while (tok != NULL)
+		// 	printf("%d %s\n", i, tok);
+		if (i >= attrsinfos.size())
+			break;
+		assert(i < attrsinfos.size());
+		if (attrsinfos[i].attrType == INT)
 		{
-			// 	printf("%d %s\n", i, tok);
-			if (i >= attrsinfos.size())
-				break;
-			assert(i < attrsinfos.size());
-			if (attrsinfos[i].attrType == INT)
-			{
-				int *vi = new int(atoi(tok));
-				Value *value = new Value(INT, (BufType)vi);
-				rdata.push_back(value);
-				cols.push_back(i);
-			}
-			else if (attrsinfos[i].attrType == FLOAT)
-			{
-				double *vf = new double(atof(tok));
-				Value *value = new Value(FLOAT, (BufType)vf);
-				rdata.push_back(value);
-				cols.push_back(i);
-			}
-			else
-			{
-				char *buftmp = strdup(tok);
-				tmps.push_back(buftmp);
-				Value *value = new Value(STRING, (BufType)buftmp);
-				rdata.push_back(value);
-				cols.push_back(i);
-			}
-			tok = strtok(NULL, "|\n");
-			i++;
+			int *vi = new int(atoi(tok));
+			Value *value = new Value(INT, (BufType)vi);
+			rdata.push_back(value);
+			cols.push_back(i);
 		}
-		Insert(tableName, rdata, cols, nullnub);
-		rdata.clear();
-		cols.clear();
-		free(tmp);
-		for (int j = 0; j < tmps.size(); j++)
+		else if (attrsinfos[i].attrType == FLOAT)
 		{
-			free(tmps[j]);
+			double *vf = new double(atof(tok));
+			Value *value = new Value(FLOAT, (BufType)vf);
+			rdata.push_back(value);
+			cols.push_back(i);
 		}
-		tmps.clear();
+		else
+		{
+			char *buftmp = strdup(tok);
+			tmps.push_back(buftmp);
+			Value *value = new Value(STRING, (BufType)buftmp);
+			rdata.push_back(value);
+			cols.push_back(i);
+		}
+		tok = strtok(NULL, "|\n");
+		i++;
 	}
+	if (i <= attrsinfos.size() - 1)
+	{
+		char *buftmp = strdup("");
+		tmps.push_back(buftmp);
+		Value *value = new Value(STRING, (BufType)buftmp);
+		rdata.push_back(value);
+		cols.push_back(i);
+	}
+	Insert(tableName, rdata, cols, nullnub);
+	rdata.clear();
+	cols.clear();
+	free(tmp);
+	for (int j = 0; j < tmps.size(); j++)
+	{
+		free(tmps[j]);
+	}
+	tmps.clear();
+}

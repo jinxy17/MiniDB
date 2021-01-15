@@ -5,9 +5,54 @@
 #include <cstring>
 #include <cstdio>
 #include <vector>
-#include "DataOperater.h"
 #include "../sysmgr/SysManager.h"
 using namespace std;
+
+enum CompOp {
+	NO_OP, EQ_OP, NE_OP, LT_OP, GT_OP, LE_OP, GE_OP, IS_NULL, IS_NOT_NULL
+};
+
+struct DataType {
+    int dtype;
+    int setlength;
+    DataType(int _dtype,int _setlength):dtype(_dtype),setlength(_setlength){};
+};
+
+struct Tcol {
+    string tablename;
+    string colname;
+    Tcol(string _tablename,string _colname):tablename(_tablename),colname(_colname){};
+};
+
+struct Value {
+    int datatype;
+    BufType data;
+    Value(int _datatype,BufType _data):datatype(_datatype),data(_data){};
+};
+
+struct Relation {
+	string table1;
+	string attr1;
+	string table2;
+	string attr2;
+	Value* value;
+	CompOp op;
+};
+
+struct Assigns {
+	string table;
+	vector<string> attrs;
+	vector<Value*> values;
+	//在添加了DNULL类型后assignnull实际为冗余成员
+	vector<bool> assignnull;
+};
+
+struct Assign {
+	string table;
+	string attr;
+	Value* value;
+	bool assignnull;
+};
 
 struct Lists{
     vector<AttrInfo*> attrinfos;
