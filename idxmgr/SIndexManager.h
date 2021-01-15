@@ -45,7 +45,7 @@ public:
     //创建新索引时调用
     bool init(int ixSize,int ixType);
 
-    //插入,删除,查询索引
+    //插入,删除索引
     bool insertIx(void *key, int page, int offset);
     bool deleteIx(void *key, int page, int offset);
 
@@ -67,8 +67,8 @@ public:
     bool compareKeyLe(void *key1, void *key2);
     bool Exists(void *key);
 
-    //索引Scan
-    bool OpenScan(void *pData, bool lower,bool scanself);
+    //索引scan,openscan的参数key为开始遍历的数据值,通过left + scanself来设置遍历的方向以及是否遍历该数据本身的条目
+    bool OpenScan(void *key, bool left,bool scanself);
 	bool GetPrevEntry(int &page, int &offset);
 	bool GetNextEntry(int &page, int &offset);
 	bool CloseScan();
